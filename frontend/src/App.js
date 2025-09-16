@@ -4,11 +4,9 @@ import TodoPage from "./pages/TodoPage";
 import Dashboard from "./pages/Dashboard";
 import CalendarView from "./pages/CalenderView";
 import Layout from "./Layout";
-import {useNotifications} from "./hooks/useNotifications";
 
 export default function App() {
   const [dark, setDark] = useState(false);
-useNotifications();
   return (
     <Router>
       <Layout dark={dark}>

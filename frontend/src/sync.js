@@ -1,7 +1,7 @@
-// sync.js
+
 import { loadLocalTasks, saveLocalTasks } from "./LocalTasks";
 
-const API_URL = "https://your-api.com";
+const API_URL = process.env.REACT_APP_API_URL || "http://localhost:5000";
 
 export async function syncTasks(token) {
   if (!navigator.onLine) return;
@@ -32,7 +32,7 @@ export async function syncTasks(token) {
       }
     } catch (err) {
       console.error("Sync failed for task", task, err);
-      updated.push(task); // keep task as is if sync failed
+      updated.push(task); // keep task as it is if sync failed
     }
   }
 

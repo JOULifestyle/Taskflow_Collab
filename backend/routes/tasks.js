@@ -79,15 +79,25 @@ router.put("/reorder", authMiddleware, async (req, res) => {
 // PUT /tasks/:id
 router.put("/:id", authMiddleware, async (req, res) => {
   try {
-    const updatedTask = await Task.findOneAndUpdate(
-      { _id: req.params.id, userId: req.userId },
-      req.body,
-      { new: true }
-    );
+    const { completed } = req.body;
 
-    if (!updatedTask) {
+    const task = await Task.findOne({ _id: req.params.id, userId: req.userId });
+    if (!task) {
       return res.status(404).json({ error: "Task not found" });
     }
+
+    const updateData = { ...req.body };
+
+    // If user marks a recurring task as completed, set lastCompletedAt
+    if (completed === true && task.repeat) {
+      updateData.lastCompletedAt = new Date();
+    }
+
+    const updatedTask = await Task.findByIdAndUpdate(
+      task._id,
+      updateData,
+      { new: true }
+    );
 
     res.json(updatedTask);
   } catch (err) {

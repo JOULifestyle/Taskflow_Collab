@@ -1,6 +1,6 @@
 require("dotenv").config();
 const mongoose = require("mongoose");
-const Task = require("./models/Task"); // adjust path if needed
+const Task = require("./models/Task"); 
 
 const MONGO_URI = process.env.MONGO_URI || "mongodb://localhost:27017/yourDB";
 

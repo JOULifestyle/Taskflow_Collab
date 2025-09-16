@@ -14,82 +14,7 @@ export function useTasks() {
     tasksRef.current = tasks;
   }, [tasks]);
 
-  // ---------- HELPERS ----------
-  const getNextDueDate = (dateStr, repeat) => {
-    const d = new Date(dateStr);
-    if (repeat === "daily") d.setDate(d.getDate() + 1);
-    if (repeat === "weekly") d.setDate(d.getDate() + 7);
-    if (repeat === "monthly") d.setMonth(d.getMonth() + 1);
-   // Format to local yyyy-MM-ddTHH:mm
-  const pad = (n) => n.toString().padStart(2, "0");
-  const local = `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
-
-  return local;
-  };
-
-  const updateTaskDueDate = useCallback(
-    async (id, newDue) => {
-      const updated = tasksRef.current.map((t) =>
-        t._id === id ? { ...t, due: newDue, completed: false } : t
-      );
-      setTasks(updated);
-      localStorage.setItem("tasks", JSON.stringify(updated));
-
-      if (!navigator.onLine) {
-        setQueue((prev) => [
-          ...prev,
-          {
-            type: "UPDATE",
-            url: `${API_URL}/tasks/${id}`,
-            options: {
-              method: "PUT",
-              headers: { "Content-Type": "application/json" },
-              body: JSON.stringify({ due: newDue, completed: false }),
-            },
-          },
-        ]);
-        return;
-      }
-
-      try {
-        const res = await fetch(`${API_URL}/tasks/${id}`, {
-          method: "PUT",
-          headers: {
-            "Content-Type": "application/json",
-            Authorization: `Bearer ${token}`,
-          },
-          body: JSON.stringify({ due: newDue, completed: false }),
-        });
-        if (!res.ok) throw new Error("Failed to update recurring task");
-      } catch (err) {
-        console.error("Failed to update recurring task", err);
-      }
-    },
-    [token]
-  );
-
-  // ---------- AUTO-RECURRING HANDLER ----------
-  const handleRecurringTasks = useCallback(async () => {
-    const now = new Date();
-    for (const t of tasksRef.current) {
-      if (!t.repeat || !t.due) continue;
-      const due = new Date(t.due);
-      if (due < now) {
-        const nextDue = getNextDueDate(t.due, t.repeat);
-        await updateTaskDueDate(t._id, nextDue);
-      }
-    }
-  }, [updateTaskDueDate]);
-
-  useEffect(() => {
-    handleRecurringTasks(); // run on mount
-    const interval = setInterval(() => {
-      handleRecurringTasks();
-    }, 60 * 1000);
-    return () => clearInterval(interval);
-  }, [handleRecurringTasks]);
-
-  // ---------- CRUD ----------
+  //  CRUD 
   const addTask = useCallback(
     async (text, due, priority, category, repeat = null) => {
       if (!text?.trim()) return;
@@ -148,21 +73,62 @@ export function useTasks() {
     [token]
   );
 
-  const toggleTask = useCallback(
+  //  AUTO REFRESH EVERY MINUTE 
+useEffect(() => {
+  if (!token) return;
+
+  const interval = setInterval(async () => {
+    if (!navigator.onLine) return;
+
+    try {
+      const res = await fetch(`${API_URL}/tasks`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      if (!res.ok) throw new Error("Failed to fetch tasks");
+
+      const data = await res.json();
+      data.sort((a, b) => a.order - b.order);
+      setTasks(data);
+      localStorage.setItem("tasks", JSON.stringify(data));
+    } catch (err) {
+      console.error("Auto refresh failed", err);
+    }
+  }, 60000); // 60s
+
+  return () => clearInterval(interval);
+}, [token]);
+
+
+const toggleTask = useCallback(
   async (id) => {
     const task = tasksRef.current.find((t) => t._id === id);
     if (!task) return;
 
-    console.log("🔍 toggleTask called for:", task.text);
-    console.log("➡️ Current values → completed:", task.completed, "repeat:", task.repeat, "due:", task.due);
+    const newCompleted = !task.completed;
+    let newLastCompletedAt = task.lastCompletedAt;
 
-    let updatedTask;
-    console.log("🧪 Task raw data →", task);
+    if (newCompleted) {
+      // Only update if it's not already done today
+      const now = new Date();
+      const last = task.lastCompletedAt ? new Date(task.lastCompletedAt) : null;
 
+      const isSameDay =
+        last &&
+        last.getFullYear() === now.getFullYear() &&
+        last.getMonth() === now.getMonth() &&
+        last.getDate() === now.getDate();
 
-    // If completing and it has repeat, generate next due date
-    console.log("⚡ Toggling completed status only — no due date change");
-updatedTask = { ...task, completed: !task.completed };
+      if (!isSameDay) {
+        newLastCompletedAt = now.toISOString();
+      }
+    }
+
+    const updatedTask = {
+      ...task,
+      completed: newCompleted,
+      lastCompletedAt: newLastCompletedAt,
+    };
+
     const updatedList = tasksRef.current.map((t) =>
       t._id === id ? updatedTask : t
     );
@@ -179,8 +145,8 @@ updatedTask = { ...task, completed: !task.completed };
             method: "PUT",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({
-              due: updatedTask.due,
-              completed: updatedTask.completed,
+              completed: newCompleted,
+              lastCompletedAt: newLastCompletedAt,
             }),
           },
         },
@@ -196,19 +162,16 @@ updatedTask = { ...task, completed: !task.completed };
           Authorization: `Bearer ${token}`,
         },
         body: JSON.stringify({
-          due: updatedTask.due,
-          completed: updatedTask.completed,
+          completed: newCompleted,
+          lastCompletedAt: newLastCompletedAt,
         }),
       });
-      if (res.ok) {
-        const updatedFromServer = await res.json();
-        console.log("✅ Updated task saved on server:", updatedFromServer);
-        setTasks((prev) =>
-          prev.map((t) => (t._id === id ? updatedFromServer : t))
-        );
-      } else {
-        throw new Error("Failed to toggle task on server");
-      }
+      if (!res.ok) throw new Error("Failed to toggle task on server");
+
+      const updatedFromServer = await res.json();
+      setTasks((prev) =>
+        prev.map((t) => (t._id === id ? updatedFromServer : t))
+      );
     } catch (err) {
       toast.error("Failed to update task");
       console.error(err);
@@ -216,7 +179,6 @@ updatedTask = { ...task, completed: !task.completed };
   },
   [token]
 );
-
 
 
   const deleteTask = useCallback(
@@ -290,7 +252,7 @@ updatedTask = { ...task, completed: !task.completed };
             due: updatedFields.due,
             priority: updatedFields.priority,
             category: updatedFields.category,
-            repeat: updatedFields.repeat, // ✅ added here
+            repeat: updatedFields.repeat,
             completed: updatedFields.completed,
           }),
         });
@@ -364,7 +326,7 @@ updatedTask = { ...task, completed: !task.completed };
     [token]
   );
 
-  // ---------- LOAD ----------
+  // LOAD
   useEffect(() => {
     if (!token) return;
 
@@ -381,11 +343,8 @@ updatedTask = { ...task, completed: !task.completed };
 
         const data = await res.json();
         data.sort((a, b) => a.order - b.order);
-
         setTasks(data);
         localStorage.setItem("tasks", JSON.stringify(data));
-
-        await handleRecurringTasks();
       } catch (err) {
         toast.error("Failed to load tasks from server");
         console.error(err);
@@ -393,9 +352,9 @@ updatedTask = { ...task, completed: !task.completed };
     };
 
     fetchTasks();
-  }, [token, handleRecurringTasks]);
+  }, [token]);
 
-  // ---------- SYNC QUEUE ----------
+  // SYNC QUEUE
   useEffect(() => {
     if (!queue.length) return;
     let cancelled = false;
@@ -466,7 +425,6 @@ updatedTask = { ...task, completed: !task.completed };
           data.sort((a, b) => a.order - b.order);
           setTasks(data);
           localStorage.setItem("tasks", JSON.stringify(data));
-          await handleRecurringTasks();
         }
       } catch (err) {
         console.error("Failed to refresh tasks after sync", err);
@@ -479,9 +437,9 @@ updatedTask = { ...task, completed: !task.completed };
       cancelled = true;
       window.removeEventListener("online", trySync);
     };
-  }, [queue, token, handleRecurringTasks]);
+  }, [queue, token]);
 
-  // ---------- SAVE TO LOCAL ----------
+  // SAVE TO LOCAL 
   useEffect(() => {
     try {
       localStorage.setItem("tasks", JSON.stringify(tasks));
@@ -490,7 +448,7 @@ updatedTask = { ...task, completed: !task.completed };
     }
   }, [tasks]);
 
-  // ---------- EDITING ----------
+  // EDITING 
   const startEdit = useCallback((id) => {
     setTasks((prev) =>
       prev.map((t) => (t._id === id ? { ...t, editing: true } : t))
@@ -498,9 +456,8 @@ updatedTask = { ...task, completed: !task.completed };
   }, []);
 
   const stopEdit = useCallback(() => {
-  setTasks((prev) => prev.map((t) => ({ ...t, editing: false })));
-}, []);
-
+    setTasks((prev) => prev.map((t) => ({ ...t, editing: false })));
+  }, []);
 
   return {
     tasks,

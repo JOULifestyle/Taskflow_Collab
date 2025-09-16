@@ -4,7 +4,7 @@ const taskSchema = new mongoose.Schema({
   userId: { type: mongoose.Schema.Types.ObjectId, ref: "User", required: true },
   text: { type: String, required: true },
   completed: { type: Boolean, default: false },
-  due: { type: String },
+  due: { type: Date },
   priority: { type: String, default: "medium" },
   category: { type: String, default: "General" },
   repeat: { 
@@ -12,8 +12,9 @@ const taskSchema = new mongoose.Schema({
     enum: ["daily", "weekly", "monthly", null], 
     default: null 
   },
+  lastCompletedAt: { type: Date, default: null }, 
   createdAt: { type: Date, default: Date.now },
-  order: { type: Number, default: 0 }, 
+  order: { type: Number, default: 0 },
 });
 
 module.exports = mongoose.model("Task", taskSchema);

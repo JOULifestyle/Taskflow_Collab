@@ -19,7 +19,7 @@ import { CSS } from "@dnd-kit/utilities";
 
 const API_URL = process.env.REACT_APP_API_URL || "http://localhost:5000";
 
-// ✅ Login/Signup Component
+// Login/Signup Component
 function AuthForm() {
   const { login, signup } = useAuth();
   const [email, setEmail] = useState("");
@@ -76,6 +76,7 @@ function AuthForm() {
   );
 }
 
+
 // Format ISO string for display in task list
 const formatDueDate = (isoStr) => {
   if (!isoStr) return "";
@@ -90,10 +91,10 @@ const formatDueDate = (isoStr) => {
   return d.toLocaleString(undefined, options); // uses user's locale
 };
 
-// ✅ Format date to datetime-local for inputs
+// Format date to datetime-local for inputs
 const formatDateForInput = (dateStr) => {
   if (!dateStr) return "";
-  return dateStr.slice(0, 16); // "YYYY-MM-DDTHH:mm"
+  return dateStr.slice(0, 16); 
 };
 
 function Todo() {
@@ -109,10 +110,54 @@ function Todo() {
   const [categoryFilter, setCategoryFilter] = useState("all");
   const [showForm, setShowForm] = useState(false);
   const [repeat, setRepeat] = useState("");
+  const [severityFilter, setSeverityFilter] = useState("all");
   const stopEdit = () => {
   setTasks(prev => prev.map(t => ({ ...t, editing: false })));
 };
 
+useEffect(() => {
+  const registerPush = async () => {
+    if (!("serviceWorker" in navigator) || !("PushManager" in window)) return;
+
+    const swReg = await navigator.serviceWorker.register("/service-worker.js");
+    const permission = await Notification.requestPermission();
+    if (permission !== "granted") return;
+
+    // Get public key from backend
+    const res = await fetch(`${API_URL}/vapid`);
+    const data = await res.json();
+    const publicKey = data.publicKey;
+
+    const subscription = await swReg.pushManager.subscribe({
+      userVisibleOnly: true,
+      applicationServerKey: urlBase64ToUint8Array(publicKey),
+    });
+
+    const token = localStorage.getItem("token");
+    await fetch(`${API_URL}/subscriptions`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${token}`
+      },
+      body: JSON.stringify(subscription)
+    });
+  };
+
+  if (user) registerPush();
+}, [user]);
+
+// helper
+function urlBase64ToUint8Array(base64String) {
+  const padding = "=".repeat((4 - base64String.length % 4) % 4);
+  const base64 = (base64String + padding).replace(/-/g, "+").replace(/_/g, "/");
+  const rawData = window.atob(base64);
+  const outputArray = new Uint8Array(rawData.length);
+  for (let i = 0; i < rawData.length; ++i) {
+    outputArray[i] = rawData.charCodeAt(i);
+  }
+  return outputArray;
+}
 
   // PWA install prompt
   const [deferredPrompt, setDeferredPrompt] = useState(null);
@@ -180,26 +225,6 @@ function Todo() {
     localStorage.setItem("tasks", JSON.stringify(tasks));
   }, [tasks]);
 
-  // ⏳ Recurring task checker
-  useEffect(() => {
-    const checkRecurring = () => {
-      const now = new Date();
-      tasks.forEach((task) => {
-        if (task.repeat && task.due && new Date(task.due) < now) {
-          let newDue = new Date(task.due);
-          if (task.repeat === "daily") newDue.setDate(newDue.getDate() + 1);
-          if (task.repeat === "weekly") newDue.setDate(newDue.getDate() + 7);
-          if (task.repeat === "monthly") newDue.setMonth(newDue.getMonth() + 1);
-
-          saveEdit(task._id, { ...task, due: newDue.toISOString() });
-        }
-      });
-    };
-
-    checkRecurring();
-    const interval = setInterval(checkRecurring, 60000);
-    return () => clearInterval(interval);
-  }, [tasks, saveEdit]);
 
   const handleDragEnd = async (event) => {
     const { active, over } = event;
@@ -250,7 +275,8 @@ function Todo() {
   const filteredTasks = tasks
     .filter(t => filter === "completed" ? t.completed : filter === "incomplete" ? !t.completed : true)
     .filter(t => (t.text || "").toLowerCase().includes(search.toLowerCase()))
-    .filter(t => categoryFilter === "all" ? true : t.category === categoryFilter);
+    .filter(t => categoryFilter === "all" ? true : t.category === categoryFilter)
+    .filter(t => severityFilter === "all" ? true : t.priority === severityFilter);
 
   const completedTasks = tasks.filter(t => t.completed).length;
   const totalTasks = tasks.length;
@@ -296,6 +322,17 @@ function Todo() {
               <option value="Personal">Personal</option>
               <option value="Shopping">Shopping</option>
             </select>
+            <select
+  value={severityFilter}
+  onChange={(e) => setSeverityFilter(e.target.value)}
+  className="text-sm border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 rounded p-2 sm:ml-2"
+>
+  <option value="all">All Severities</option>
+  <option value="low">Low 🟢</option>
+  <option value="medium">Medium 🟡</option>
+  <option value="high">High 🔴</option>
+</select>
+
           </div>
 
           {/* Progress bar */}
@@ -421,11 +458,22 @@ function Todo() {
 /* Sortable Task Item */
 function SortableTask({ id, task, toggleTask, deleteTask, startEdit, onSave, getDueDateColor, getPriorityColor, stopEdit }) {
   const { attributes, listeners, setNodeRef, transform, transition } = useSortable({ id });
-
   const style = { transform: CSS.Transform.toString(transform), transition };
 
+  // Helper to format lastCompletedAt
+  const formatLastCompleted = (isoStr) => {
+    if (!isoStr) return "";
+    const d = new Date(isoStr);
+    return d.toLocaleString();
+  };
+
   return (
-    <li ref={setNodeRef} style={style} {...attributes} className={`flex flex-col sm:flex-row justify-between items-start sm:items-center w-full bg-gray-100 dark:bg-gray-800 text-gray-900 dark:text-gray-100 p-3 rounded-md ${getPriorityColor(task.priority)}`}>
+    <li
+      ref={setNodeRef}
+      style={style}
+      {...attributes}
+      className={`flex flex-col sm:flex-row justify-between items-start sm:items-center w-full bg-gray-100 dark:bg-gray-800 text-gray-900 dark:text-gray-100 p-3 rounded-md ${getPriorityColor(task.priority)}`}
+    >
       {task.editing ? (
         <EditTask task={task} onSave={onSave} onCancel={stopEdit} />
       ) : (
@@ -439,10 +487,18 @@ function SortableTask({ id, task, toggleTask, deleteTask, startEdit, onSave, get
               <p className="text-xs italic capitalize">Priority: {task.priority}</p>
               <p className="text-xs font-semibold text-blue-500">Category: {task.category}</p>
               {task.repeat && (
-    <p className="text-xs text-purple-500 capitalize">🔁Repeats: {task.repeat}</p>
-  )}
+                <p className="text-xs text-purple-500 capitalize">🔁 Repeats: {task.repeat}</p>
+              )}
+
+              {/* NEW: show last completed */}
+              {task.lastCompletedAt && (
+                <p className="text-xs text-gray-500">
+                  ✅ Last done: {formatLastCompleted(task.lastCompletedAt)}
+                </p>
+              )}
             </div>
           </div>
+
           <div className="flex gap-2 mt-2 sm:mt-0">
             <button onClick={() => startEdit(task._id)} className="text-blue-500 hover:underline text-sm">Edit</button>
             <button onClick={() => deleteTask(task._id)} className="text-red-500 hover:underline text-sm">Delete</button>
@@ -452,6 +508,7 @@ function SortableTask({ id, task, toggleTask, deleteTask, startEdit, onSave, get
     </li>
   );
 }
+
 
 /* Edit Task Form */
 function EditTask({ task, onSave, onCancel }) {

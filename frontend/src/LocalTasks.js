@@ -1,4 +1,4 @@
-// localTasks.js
+
 export function loadLocalTasks() {
   const saved = localStorage.getItem("tasks");
   return saved ? JSON.parse(saved) : [];
