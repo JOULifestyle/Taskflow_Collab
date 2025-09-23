@@ -5,6 +5,7 @@ const taskSchema = new mongoose.Schema({
   text: { type: String, required: true },
   completed: { type: Boolean, default: false },
   due: { type: Date },
+  notified: { type: Boolean, default: false },
   priority: { type: String, default: "medium" },
   category: { type: String, default: "General" },
   repeat: { 

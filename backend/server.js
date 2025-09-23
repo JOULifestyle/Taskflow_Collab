@@ -10,6 +10,8 @@ const webpush = require("web-push");
 const subscriptionRoutes = require("./routes/subscriptions");
 const Subscription = require("./models/Subscription");
 const vapidRoutes = require("./routes/vapid");
+const NotificationLog = require("./models/NotificationLog");
+
 
 const app = express();
 app.use(cors());
@@ -40,49 +42,83 @@ function getNextDueDate(current, repeat) {
 // CRON job: run every minute
 cron.schedule("* * * * *", async () => {
   console.log("⏰ Cron running every minute...");
+  const now = new Date();
+
   try {
-    const now = new Date();
+    // --- Notifications ---
+    const tasks = await Task.find({ due: { $ne: null }, completed: false });
+console.log("Found tasks:", tasks.length);
 
-    const tasks = await Task.find({
-      repeat: { $ne: null },
-      due: { $lte: now },
-    });
+for (const t of tasks) {
+  const diffMin = Math.floor((new Date(t.due) - now) / 60000);
+  console.log(`Task ${t.text}: diffMin = ${diffMin}, due = ${t.due}`);
 
-    console.log("Found", tasks.length, "tasks to update");
+  let stage = null;
+  if (diffMin === 15) stage = "15min";
+  else if (diffMin === 5) stage = "5min";
+  else if (diffMin === 0) stage = "0min";
 
-    if (tasks.length > 0) {
-      const subs = await Subscription.find(); // get all user subscriptions
+  if (!stage) continue;
 
-      for (const t of tasks) {
-        const nextDue = getNextDueDate(t.due, t.repeat);
+  // Atomically check + insert
+  const log = await NotificationLog.findOneAndUpdate(
+    { taskId: t._id, stage },
+    { $setOnInsert: { sentAt: new Date() } },
+    { upsert: true, new: false } // new:false = return old doc if exists
+  );
 
-        await Task.findByIdAndUpdate(t._id, {
-          lastCompletedAt: t.completed ? now : t.lastCompletedAt,
-          due: nextDue,
-          completed: false,
-        });
+  // If log already existed, skip (notification already sent)
+  if (log) continue;
 
-        console.log(`♻️ Updated: ${t.text} → next due ${nextDue}`);
+  // Otherwise, send notification
+  const subs = await Subscription.find({ userId: t.userId });
+  console.log("Subs found for", t.userId, subs.length);
 
-        // Send notification
-        const payload = JSON.stringify({
-          title: "Task Reminder",
-          body: `It's time for: ${t.text}`,
-        });
+  const payload = JSON.stringify({
+    title: "Task Reminder",
+    body:
+      stage === "0min"
+        ? `⏰ ${t.text} is due now`
+        : `⏳ ${t.text} is due in ${diffMin} minutes`,
+  });
 
-        for (const s of subs) {
-          try {
-            await webpush.sendNotification(s, payload);
-          } catch (err) {
-            console.error("Push error:", err);
-          }
-        }
+  for (const s of subs) {
+    try {
+      await webpush.sendNotification(s.subscription, payload);
+      console.log("Notification sent to", s.userId);
+    } catch (err) {
+      console.error("Push error:", err.statusCode || err.message);
+    }
+  }
+}
+
+    // --- Recurring tasks ---
+    const recurring = await Task.find({ repeat: { $ne: null } });
+    console.log("Recurring tasks found:", recurring.length);
+
+    for (const r of recurring) {
+      const dueTime = new Date(r.due);
+
+      if (r.completed === true || dueTime < now) {
+        const newDue = getNextDueDate(r.due, r.repeat);
+        r.due = newDue;
+        r.completed = false;
+
+        await r.save();
+
+        console.log(
+          `⟳ Recurring task "${r.text}" moved to next due: ${newDue}`
+        );
       }
     }
   } catch (err) {
     console.error("Cron job error:", err);
   }
 });
+
+
+
+
 
 // DB connect and start server
 const PORT = process.env.PORT || 5000;

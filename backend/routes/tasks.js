@@ -1,6 +1,7 @@
 const express = require("express");
 const jwt = require("jsonwebtoken");
 const Task = require("../models/Task");
+const taskController = require("../controllers/tasks");
 
 const router = express.Router();
 
@@ -76,34 +77,10 @@ router.put("/reorder", authMiddleware, async (req, res) => {
   }
 });
 
-// PUT /tasks/:id
-router.put("/:id", authMiddleware, async (req, res) => {
-  try {
-    const { completed } = req.body;
 
-    const task = await Task.findOne({ _id: req.params.id, userId: req.userId });
-    if (!task) {
-      return res.status(404).json({ error: "Task not found" });
-    }
-
-    const updateData = { ...req.body };
-
-    // If user marks a recurring task as completed, set lastCompletedAt
-    if (completed === true && task.repeat) {
-      updateData.lastCompletedAt = new Date();
-    }
-
-    const updatedTask = await Task.findByIdAndUpdate(
-      task._id,
-      updateData,
-      { new: true }
-    );
-
-    res.json(updatedTask);
-  } catch (err) {
-    console.error("Update task error:", err);
-    res.status(500).json({ error: "Failed to update task" });
-  }
+// PUT /tasks/:id uses controller (with NotificationLog clearing)
+router.put("/:id", authMiddleware, (req, res) => {
+  taskController.updateTask(req, res);
 });
 
 // DELETE /tasks/:id

@@ -94,7 +94,10 @@ const formatDueDate = (isoStr) => {
 // Format date to datetime-local for inputs
 const formatDateForInput = (dateStr) => {
   if (!dateStr) return "";
-  return dateStr.slice(0, 16); 
+  const d = new Date(dateStr);
+  const offset = d.getTimezoneOffset();
+  const local = new Date(d.getTime() - offset * 60000); // shift to local
+  return local.toISOString().slice(0, 16); 
 };
 
 function Todo() {
@@ -111,6 +114,7 @@ function Todo() {
   const [showForm, setShowForm] = useState(false);
   const [repeat, setRepeat] = useState("");
   const [severityFilter, setSeverityFilter] = useState("all");
+  const [loading, setLoading] = useState(false);
   const stopEdit = () => {
   setTasks(prev => prev.map(t => ({ ...t, editing: false })));
 };
@@ -208,18 +212,24 @@ function urlBase64ToUint8Array(base64String) {
       }
 
       try {
-        const res = await fetch(`${API_URL}/tasks`, { headers: { Authorization: `Bearer ${token}` } });
-        const data = await res.json();
-        setTasks(data);
-        localStorage.setItem("tasks", JSON.stringify(data));
-      } catch (err) {
-        toast.error("Failed to load tasks");
-        console.error(err);
-      }
-    };
+      setLoading(true); // start loading
+      const res = await fetch(`${API_URL}/tasks`, { 
+        headers: { Authorization: `Bearer ${token}` },
+        cache: "no-store"   // prevents browser from reusing stale cached responses
+      });
+      const data = await res.json();
+      setTasks(data);
+      localStorage.setItem("tasks", JSON.stringify(data));
+    } catch (err) {
+      toast.error("Failed to load tasks");
+      console.error(err);
+    } finally {
+      setLoading(false); // stop loading
+    }
+  };
 
-    fetchTasks();
-  }, [user, setTasks]);
+  fetchTasks();
+}, [user, setTasks]);
 
   useEffect(() => {
     localStorage.setItem("tasks", JSON.stringify(tasks));
@@ -227,34 +237,54 @@ function urlBase64ToUint8Array(base64String) {
 
 
   const handleDragEnd = async (event) => {
-    const { active, over } = event;
-    if (!over || active.id === over.id) return;
+  const { active, over } = event;
+  if (!over || active.id === over.id) return;
 
-    const oldIndex = tasks.findIndex((t) => t._id === active.id);
-    const newIndex = tasks.findIndex((t) => t._id === over.id);
+  // Check which list the dragged item belongs to
+  const inRecurring = recurringTasks.some((t) => t._id === active.id);
+  const list = inRecurring ? recurringTasks : nonRecurringTasks;
 
-    const newTasks = arrayMove(tasks, oldIndex, newIndex);
-    setTasks(newTasks);
-    localStorage.setItem("tasks", JSON.stringify(newTasks));
+  const oldIndex = list.findIndex((t) => t._id === active.id);
+  const newIndex = list.findIndex((t) => t._id === over.id);
 
-    if (!navigator.onLine) return;
+  if (oldIndex === -1 || newIndex === -1) return; // invalid drag
 
-    try {
-      const token = localStorage.getItem("token"); 
-      const res = await fetch(`${API_URL}/tasks/reorder`, {
-        method: "PUT",
-        headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
-        body: JSON.stringify({ orderedIds: newTasks.map((t) => t._id) }),
-      });
-      if (!res.ok) throw new Error("Failed to save order");
-      const updatedTasks = await res.json();
-      setTasks(updatedTasks);
-      localStorage.setItem("tasks", JSON.stringify(updatedTasks));
-    } catch (err) {
-      toast.error("Failed to save task order");
-      console.error(err);
-    }
-  };
+  // Reorder only that list
+  const newList = arrayMove(list, oldIndex, newIndex);
+
+  // Merge both lists back into one full tasks array
+  const newTasks = inRecurring
+    ? [...nonRecurringTasks, ...newList]
+    : [...newList, ...recurringTasks];
+
+  setTasks(newTasks);
+  localStorage.setItem("tasks", JSON.stringify(newTasks));
+
+  // Sync with backend if online
+  if (!navigator.onLine) return;
+
+  try {
+    const token = localStorage.getItem("token");
+    const res = await fetch(`${API_URL}/tasks/reorder`, {
+      method: "PUT",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${token}`,
+      },
+      body: JSON.stringify({ orderedIds: newTasks.map((t) => t._id) }),
+    });
+
+    if (!res.ok) throw new Error("Failed to save order");
+
+    const updatedTasks = await res.json();
+    setTasks(updatedTasks);
+    localStorage.setItem("tasks", JSON.stringify(updatedTasks));
+  } catch (err) {
+    toast.error("Failed to save task order");
+    console.error(err);
+  }
+};
+
 
   const getDueDateColor = (due) => {
     const daysLeft = Math.ceil((new Date(due) - new Date()) / (1000 * 60 * 60 * 24));
@@ -281,13 +311,22 @@ function urlBase64ToUint8Array(base64String) {
   const completedTasks = tasks.filter(t => t.completed).length;
   const totalTasks = tasks.length;
 
+  const recurringTasks = filteredTasks.filter(t => t.repeat);
+const nonRecurringTasks = filteredTasks.filter(t => !t.repeat);
+
   if (!user) return <AuthForm />;
 
   return (
-    <>
+  <>
       <Toaster />
-      <div className="bg-white dark:bg-gray-900 text-gray-900 dark:text-gray-100 p-4 sm:p-6 rounded-xl shadow-xl w-full max-w-lg sm:max-w-md mx-auto flex flex-col justify-between min-h-[90vh]">
-        <div>
+
+      {loading ? (
+        <div className="flex justify-center items-center py-6">
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-500"></div>
+        </div>
+      ) : (
+        <div className="bg-white dark:bg-gray-900 text-gray-900 dark:text-gray-100 p-4 sm:p-6 rounded-xl shadow-xl w-full max-w-lg sm:max-w-md mx-auto flex flex-col justify-between min-h-[90vh]">
+          <div>
           <h1 className="text-2xl font-bold mb-4 text-center">📅 My To-Do List</h1>
 
           {installable && (
@@ -425,25 +464,58 @@ function urlBase64ToUint8Array(base64String) {
 
           {/* Drag and Drop Tasks */}
           <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
-            <SortableContext items={filteredTasks.map((t) => t._id)} strategy={verticalListSortingStrategy}>
-              <ul className="space-y-3">
-                {filteredTasks.map((task, index) => (
-                  <SortableTask
-                    key={task._id}
-                    id={task._id}
-                    task={task}
-                    index={index}
-                    toggleTask={() => toggleTask(task._id)}
-                    deleteTask={() => deleteTask(task._id)}
-                    startEdit={(id) => startEdit(id)}
-                    onSave={(updatedFields) => saveEdit(task._id, updatedFields)}
-                    getDueDateColor={getDueDateColor}
-                    getPriorityColor={getPriorityColor}
-                    stopEdit={stopEdit}
-                  />
-                ))}
-              </ul>
-            </SortableContext>
+            {/* Non-recurring tasks */}
+  <h2 className="font-bold text-lg mt-4 mb-2">📝 Tasks</h2>
+<SortableContext
+  items={nonRecurringTasks.map((t) => t._id)}
+  strategy={verticalListSortingStrategy}
+>
+  <ul className="space-y-3">
+    {nonRecurringTasks.map((task, index) => (
+      <SortableTask
+        key={task._id}
+        id={task._id}
+        task={task}
+        index={index}
+        toggleTask={() => toggleTask(task._id)}
+        deleteTask={() => deleteTask(task._id)}
+        startEdit={() => startEdit(task._id)}
+        onSave={(updatedFields) => saveEdit(task._id, updatedFields)}
+        getDueDateColor={getDueDateColor}
+        getPriorityColor={getPriorityColor}
+        stopEdit={stopEdit}
+      />
+    ))}
+  </ul>
+</SortableContext>
+
+{/* Divider */}
+<hr className="my-6 border-gray-400 dark:border-gray-600" />
+
+{/* Recurring tasks */}
+<h2 className="font-bold text-lg mb-2">🔁 Recurring Tasks</h2>
+<SortableContext
+  items={recurringTasks.map((t) => t._id)}
+  strategy={verticalListSortingStrategy}
+>
+  <ul className="space-y-3">
+    {recurringTasks.map((task, index) => (
+      <SortableTask
+        key={task._id}
+        id={task._id}
+        task={task}
+        index={index}
+        toggleTask={() => toggleTask(task._id)}
+        deleteTask={() => deleteTask(task._id)}
+        startEdit={() => startEdit(task._id)}
+        onSave={(updatedFields) => saveEdit(task._id, updatedFields)}
+        getDueDateColor={getDueDateColor}
+        getPriorityColor={getPriorityColor}
+        stopEdit={stopEdit}
+      />
+    ))}
+  </ul>
+</SortableContext>
           </DndContext>
         </div>
 
@@ -451,6 +523,7 @@ function urlBase64ToUint8Array(base64String) {
           © 2025 joulifestyle
         </footer>
       </div>
+      )}
     </>
   );
 }
@@ -490,7 +563,7 @@ function SortableTask({ id, task, toggleTask, deleteTask, startEdit, onSave, get
                 <p className="text-xs text-purple-500 capitalize">🔁 Repeats: {task.repeat}</p>
               )}
 
-              {/* NEW: show last completed */}
+              {/* show last completed */}
               {task.lastCompletedAt && (
                 <p className="text-xs text-gray-500">
                   ✅ Last done: {formatLastCompleted(task.lastCompletedAt)}
@@ -569,7 +642,7 @@ function EditTask({ task, onSave, onCancel }) {
       </select>
       <div className="flex gap-2 mt-2">
         <button
-          onClick={() => onSave({ text, due, priority, category, repeat })}
+          onClick={() => onSave({ text, due: due ? new Date(due).toISOString() : null, priority, category, repeat })}
           className={`${buttonBase} bg-green-500 hover:bg-green-600`}
         >
           Save

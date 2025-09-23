@@ -4,8 +4,13 @@ import TodoPage from "./pages/TodoPage";
 import Dashboard from "./pages/Dashboard";
 import CalendarView from "./pages/CalenderView";
 import Layout from "./Layout";
+import { usePushNotifications } from "./hooks/usePushNotifications";
+import { useAuth } from "./context/AuthContext"; 
+
 
 export default function App() {
+  const { token } = useAuth();          // get user token
+  usePushNotifications(token); 
   const [dark, setDark] = useState(false);
   return (
     <Router>

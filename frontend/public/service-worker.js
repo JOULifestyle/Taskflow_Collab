@@ -44,11 +44,15 @@ self.addEventListener("fetch", (event) => {
 });
 
 self.addEventListener("push", (event) => {
+  console.log("📬 Push received:", event);
   let data = {};
-  try {
-    data = event.data ? event.data.json() : {};
-  } catch (e) {
-    console.error("Push event data error", e);
+  if (event.data) {
+    try {
+      data = event.data.json();
+    } catch {
+      // fallback if plain text is sent
+      data = { title: "Notification", body: event.data.text() };
+    }
   }
 
   const title = data.title || "New Notification";
@@ -58,6 +62,25 @@ self.addEventListener("push", (event) => {
     self.registration.showNotification(title, {
       body,
       icon: "/logo192.png",
+    })
+  );
+});
+
+self.addEventListener("notificationclick", (event) => {
+  event.notification.close(); // close the notification
+
+  event.waitUntil(
+    clients.matchAll({ type: "window", includeUncontrolled: true }).then((clientList) => {
+      // If the app is already open in a tab, focus it
+      for (const client of clientList) {
+        if (client.url.includes(self.origin) && "focus" in client) {
+          return client.focus();
+        }
+      }
+      // Otherwise, open a new tab
+      if (clients.openWindow) {
+        return clients.openWindow("/");
+      }
     })
   );
 });

@@ -1,4 +1,4 @@
-// tasksManager.js
+
 import { loadLocalTasks, saveLocalTasks } from "./LocalTasks";
 
 export function addTask(task) {
