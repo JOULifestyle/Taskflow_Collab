@@ -6,30 +6,26 @@ import reportWebVitals from './reportWebVitals';
 import * as serviceWorkerRegistration from './serviceWorkerRegistration';
 import { AuthProvider } from "./context/AuthContext"; 
 
-
 const root = ReactDOM.createRoot(document.getElementById('root'));
 root.render(
   <React.StrictMode>
     <AuthProvider>
-    <App />
+      <App />
     </AuthProvider>
   </React.StrictMode>
 );
 
+// Register service worker
 serviceWorkerRegistration.register();
 
+// Listen for messages from service worker
 if ("serviceWorker" in navigator) {
-  window.addEventListener("load", () => {
-    navigator.serviceWorker
-      .register("/service-worker.js")
-      .then((registration) => {
-        console.log("Service Worker registered:", registration);
-      })
-      .catch((error) => {
-        console.error("Service Worker registration failed:", error);
-      });
+  navigator.serviceWorker.addEventListener("message", (event) => {
+    if (event.data?.type === "NEW_VERSION_AVAILABLE") {
+      alert("🚀 A new version is available. Please refresh to update!");
+      // TODO: replace alert with your toast/snackbar UI
+    }
   });
 }
-
 
 reportWebVitals();

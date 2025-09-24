@@ -1,5 +1,4 @@
-
-const CACHE_NAME = "todo-app-cache-v1";
+const CACHE_NAME = "todo-app-cache-v2"; // bump version when deploying
 const ASSETS_TO_CACHE = [
   "/",
   "/index.html",
@@ -7,42 +6,65 @@ const ASSETS_TO_CACHE = [
   "/manifest.json",
   "/logo192.png",
   "/logo512.png",
-  "/static/js/bundle.js", 
+  "/static/js/bundle.js",
   "/static/css/main.css",
 ];
 
-// Install event: cache app assets
+// Install event: cache app assets & activate immediately
 self.addEventListener("install", (event) => {
+  console.log("📥 Service Worker installing...");
+  self.skipWaiting(); // 🚀 activate new worker right away
   event.waitUntil(
     caches.open(CACHE_NAME).then((cache) => {
-      console.log("Caching app assets");
+      console.log("📦 Caching static assets...");
       return cache.addAll(ASSETS_TO_CACHE);
     })
   );
 });
 
-// Activate event: clean old caches
+// Activate event: clean old caches and claim clients
 self.addEventListener("activate", (event) => {
+  console.log("⚡ Activating new service worker...");
   event.waitUntil(
     caches.keys().then((keys) =>
       Promise.all(
         keys.map((key) => {
-          if (key !== CACHE_NAME) return caches.delete(key);
+          if (key !== CACHE_NAME) {
+            console.log("🧹 Removing old cache:", key);
+            return caches.delete(key);
+          }
         })
       )
     )
   );
+  return self.clients.claim(); // 🔄 take control of all open clients
 });
 
-// Fetch event: serve from cache if offline
+// Fetch event: cache-first for static assets, bypass /api calls
 self.addEventListener("fetch", (event) => {
+  const url = new URL(event.request.url);
+
+  // Skip API requests (always go to network)
+  if (url.pathname.startsWith("/api")) {
+    return;
+  }
+
   event.respondWith(
     caches.match(event.request).then((cached) => {
-      return cached || fetch(event.request);
+      return (
+        cached ||
+        fetch(event.request).catch(() => {
+          // Offline fallback for navigation requests
+          if (event.request.mode === "navigate") {
+            return caches.match("/index.html");
+          }
+        })
+      );
     })
   );
 });
 
+// Push notifications
 self.addEventListener("push", (event) => {
   console.log("📬 Push received:", event);
   let data = {};
@@ -50,7 +72,6 @@ self.addEventListener("push", (event) => {
     try {
       data = event.data.json();
     } catch {
-      // fallback if plain text is sent
       data = { title: "Notification", body: event.data.text() };
     }
   }
@@ -66,18 +87,17 @@ self.addEventListener("push", (event) => {
   );
 });
 
+// Notification click
 self.addEventListener("notificationclick", (event) => {
-  event.notification.close(); // close the notification
+  event.notification.close();
 
   event.waitUntil(
     clients.matchAll({ type: "window", includeUncontrolled: true }).then((clientList) => {
-      // If the app is already open in a tab, focus it
       for (const client of clientList) {
         if (client.url.includes(self.origin) && "focus" in client) {
           return client.focus();
         }
       }
-      // Otherwise, open a new tab
       if (clients.openWindow) {
         return clients.openWindow("/");
       }
@@ -85,4 +105,14 @@ self.addEventListener("notificationclick", (event) => {
   );
 });
 
-
+// Notify clients when a new SW is active
+self.addEventListener("activate", (event) => {
+  event.waitUntil(
+    (async () => {
+      const clientsList = await self.clients.matchAll({ type: "window" });
+      for (const client of clientsList) {
+        client.postMessage({ type: "NEW_VERSION_AVAILABLE" });
+      }
+    })()
+  );
+});
