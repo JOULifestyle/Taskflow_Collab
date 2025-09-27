@@ -2,9 +2,10 @@ const mongoose = require("mongoose");
 
 const taskSchema = new mongoose.Schema({
   userId: { type: mongoose.Schema.Types.ObjectId, ref: "User", required: true },
+  listId: { type: mongoose.Schema.Types.ObjectId, ref: "List", required: true },
   text: { type: String, required: true },
   completed: { type: Boolean, default: false },
-  due: { type: Date },
+  due: { type: Date, default: null },
   notified: { type: Boolean, default: false },
   priority: { type: String, default: "medium" },
   category: { type: String, default: "General" },

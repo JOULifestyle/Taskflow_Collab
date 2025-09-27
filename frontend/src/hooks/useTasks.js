@@ -5,58 +5,98 @@ import { useAuth } from "../context/AuthContext";
 const API_URL = process.env.REACT_APP_API_URL || "http://localhost:5000";
 
 // Normalize tasks to prevent missing fields
-const normalizeTasks = (raw) =>
+const normalizeTasks = (raw = []) =>
   raw.map((t) => ({
     ...t,
-    repeat: t.repeat || null,
-    category: t.category || "General",
-    priority: t.priority || "normal",
-    text: t.text || "",
+    repeat: t?.repeat ?? null,
+    category: t?.category ?? "General",
+    priority: t?.priority ?? "normal",
+    text: t?.text ?? "",
   }));
 
-export function useTasks() {
+ // Merge temp + real tasks
+function mergeTasks(apiTasks, localTasks) {
+  const merged = [];
+
+  for (const local of localTasks) {
+    if (local._id.startsWith("temp-")) {
+      // Try to match real task by fields
+      const match = apiTasks.find(
+        (t) =>
+          t.text === local.text &&
+          String(t.due) === String(local.due) &&
+          t.priority === local.priority &&
+          t.category === local.category
+      );
+      merged.push(match || local);
+    } else {
+      merged.push(local);
+    }
+  }
+  // Add any missing API tasks
+  for (const api of apiTasks) {
+    if (!merged.find((m) => m._id === api._id)) {
+      merged.push(api);
+    }
+  }
+
+  merged.sort((a, b) => (a.order ?? 0) - (b.order ?? 0));
+  return merged;
+}
+export function useTasks(listId) {
   const { token } = useAuth();
   const [tasks, setTasks] = useState([]);
   const tasksRef = useRef(tasks);
   const [queue, setQueue] = useState([]);
-  const [loading, setLoading] = useState(false); 
-
+  const [loading, setLoading] = useState(false);
   // keep ref in sync
   useEffect(() => {
     tasksRef.current = tasks;
   }, [tasks]);
 
-  // Load tasks from localStorage on mount
+   // 🔑 Reset when no list is selected
   useEffect(() => {
-    const saved = localStorage.getItem("tasks");
+    if (!listId) {
+      setTasks([]); // clear tasks
+      return;
+    }
+    // Load tasks from localStorage (per listId)
+    const saved = localStorage.getItem(`tasks-${listId}`);
     if (saved) {
       try {
         setTasks(normalizeTasks(JSON.parse(saved)));
       } catch {
-        localStorage.removeItem("tasks");
+        localStorage.removeItem(`tasks-${listId}`);
+        setTasks([]);
       }
+    } else {
+      setTasks([]); // reset when switching lists
     }
-  }, []);
+  }, [listId]);
 
-  // Fetch tasks from API on mount or token change
+
+  // Fetch tasks from API when token or listId changes
   useEffect(() => {
-    if (!token) return;
+    if (!token || !listId) return;
 
     const fetchTasks = async () => {
       setLoading(true);
       try {
-        const res = await fetch(`${API_URL}/tasks`, {
+        const res = await fetch(`${API_URL}/lists/${listId}/tasks`, {
           headers: { Authorization: `Bearer ${token}` },
-          cache: "no-store", //  prevent stale cache
+          cache: "no-store",
         });
         if (!res.ok) throw new Error("Failed to fetch tasks");
 
         const data = await res.json();
         const normalized = normalizeTasks(data);
-        normalized.sort((a, b) => a.order - b.order);
 
-        setTasks(normalized);
-        localStorage.setItem("tasks", JSON.stringify(normalized));
+        const saved = localStorage.getItem(`tasks-${listId}`);
+        const local = saved ? normalizeTasks(JSON.parse(saved)) : [];
+        const merged = mergeTasks(normalized, local);
+
+        setTasks(merged);
+        localStorage.setItem(`tasks-${listId}`, JSON.stringify(merged));
       } catch (err) {
         console.error("Error fetching tasks:", err);
       } finally {
@@ -65,46 +105,56 @@ export function useTasks() {
     };
 
     fetchTasks();
-  }, [token]);
+  }, [token, listId]);
+
+   // Persist tasks to localStorage whenever they change
+  useEffect(() => {
+    if (!listId) return; //  don’t persist if no active list
+    localStorage.setItem(`tasks-${listId}`, JSON.stringify(normalizeTasks(tasks)));
+  }, [tasks, listId]);
 
   // Auto-refresh every 30s
   useEffect(() => {
-    if (!token) return;
+    if (!token || !listId) return;
 
     const interval = setInterval(async () => {
       if (!navigator.onLine) return;
       try {
-        const res = await fetch(`${API_URL}/tasks`, {
+        const res = await fetch(`${API_URL}/lists/${listId}/tasks`, {
           headers: { Authorization: `Bearer ${token}` },
           cache: "no-store",
         });
         if (!res.ok) return;
-
         const data = await res.json();
         const normalized = normalizeTasks(data);
-        normalized.sort((a, b) => a.order - b.order);
 
-        setTasks(normalized);
-        localStorage.setItem("tasks", JSON.stringify(normalized));
+        const saved = localStorage.getItem(`tasks-${listId}`);
+const local = saved ? normalizeTasks(JSON.parse(saved)) : [];
+const merged = mergeTasks(normalized, local);
+
+
+        setTasks(merged);
+        localStorage.setItem(`tasks-${listId}`, JSON.stringify(merged));
       } catch (err) {
         console.error("Auto-refresh failed:", err);
       }
     }, 30000);
 
     return () => clearInterval(interval);
-  }, [token]);
+  }, [token, listId]);
 
   // Persist tasks to localStorage whenever they change
   useEffect(() => {
-    localStorage.setItem("tasks", JSON.stringify(normalizeTasks(tasks)));
-  }, [tasks]);
+    if (!listId) return;
+    localStorage.setItem(`tasks-${listId}`, JSON.stringify(normalizeTasks(tasks)));
+  }, [tasks, listId]);
 
   // -------------------
   // CRUD
   // -------------------
-  const addTask = useCallback(
+   const addTask = useCallback(
     async (text, due, priority, category, repeat = null) => {
-      if (!text?.trim()) return;
+      if (!text?.trim() || !listId) return;
 
       const tempId = `temp-${Date.now()}`;
       const newTask = {
@@ -120,14 +170,14 @@ export function useTasks() {
 
       const updated = [...tasksRef.current, newTask];
       setTasks(updated);
-      localStorage.setItem("tasks", JSON.stringify(normalizeTasks(updated)));
+      localStorage.setItem(`tasks-${listId}`, JSON.stringify(normalizeTasks(updated)));
 
       if (!navigator.onLine) {
         setQueue((prev) => [
           ...prev,
           {
             type: "ADD",
-            url: `${API_URL}/tasks`,
+            url: `${API_URL}/lists/${listId}/tasks`,
             options: {
               method: "POST",
               headers: { "Content-Type": "application/json" },
@@ -141,7 +191,7 @@ export function useTasks() {
       }
 
       try {
-        const res = await fetch(`${API_URL}/tasks`, {
+        const res = await fetch(`${API_URL}/lists/${listId}/tasks`, {
           method: "POST",
           headers: {
             "Content-Type": "application/json",
@@ -150,21 +200,25 @@ export function useTasks() {
           cache: "no-store",
           body: JSON.stringify({ text, due, priority, category, repeat }),
         });
+        if (!res.ok) throw new Error("Failed to add task");
         const created = await res.json();
-        setTasks((prev) => prev.map((t) => (t._id === tempId ? created : t)));
+
+        setTasks((prev) =>
+          prev.map((t) => (t._id === tempId ? created : t))
+        );
         toast.success("Task added");
       } catch (err) {
         toast.error("Failed to add task");
         console.error(err);
       }
     },
-    [token]
+    [token, listId]
   );
 
   const toggleTask = useCallback(
     async (id) => {
       const task = tasksRef.current.find((t) => t._id === id);
-      if (!task) return;
+      if (!task || !listId) return;
 
       const newCompleted = !task.completed;
       let newLastCompletedAt = task.lastCompletedAt;
@@ -184,14 +238,14 @@ export function useTasks() {
       const updatedTask = { ...task, completed: newCompleted, lastCompletedAt: newLastCompletedAt };
       const updatedList = tasksRef.current.map((t) => (t._id === id ? updatedTask : t));
       setTasks(updatedList);
-      localStorage.setItem("tasks", JSON.stringify(updatedList));
+      localStorage.setItem(`tasks-${listId}`, JSON.stringify(normalizeTasks(updatedList)));
 
       if (!navigator.onLine) {
         setQueue((prev) => [
           ...prev,
           {
             type: "UPDATE",
-            url: `${API_URL}/tasks/${id}`,
+            url: `${API_URL}/lists/${listId}/tasks/${id}`,
             options: {
               method: "PUT",
               headers: { "Content-Type": "application/json" },
@@ -206,7 +260,7 @@ export function useTasks() {
       }
 
       try {
-        const res = await fetch(`${API_URL}/tasks/${id}`, {
+        const res = await fetch(`${API_URL}/lists/${listId}/tasks/${id}`, {
           method: "PUT",
           headers: {
             "Content-Type": "application/json",
@@ -219,29 +273,28 @@ export function useTasks() {
           }),
         });
         if (!res.ok) throw new Error("Failed to toggle task");
-
         const updatedFromServer = await res.json();
-        setTasks((prev) => prev.map((t) => (t._id === id ? updatedFromServer : t)));
+setTasks((prev) => mergeTasks([updatedFromServer], prev));
       } catch (err) {
         toast.error("Failed to update task");
         console.error(err);
       }
     },
-    [token]
+    [token, listId]
   );
 
   const deleteTask = useCallback(
     async (id) => {
       const updated = tasksRef.current.filter((t) => t._id !== id);
       setTasks(updated);
-      localStorage.setItem("tasks", JSON.stringify(normalizeTasks(updated)));
+      localStorage.setItem(`tasks-${listId}`, JSON.stringify(normalizeTasks(updated)));
 
       if (!navigator.onLine) {
         setQueue((prev) => [
           ...prev,
           {
             type: "DELETE",
-            url: `${API_URL}/tasks/${id}`,
+            url: `${API_URL}/lists/${listId}/tasks/${id}`,
             options: { method: "DELETE", headers: {} },
             dependsOn: id.startsWith("temp-") ? id : undefined,
           },
@@ -251,18 +304,21 @@ export function useTasks() {
       }
 
       try {
-        const res = await fetch(`${API_URL}/tasks/${id}`, {
+        const res = await fetch(`${API_URL}/lists/${listId}/tasks/${id}`, {
           method: "DELETE",
           headers: { Authorization: `Bearer ${token}` },
           cache: "no-store",
         });
-        if (res.ok) toast.success("Task deleted");
+        if (res.ok) {
+  toast.success("Task deleted");
+  setTasks((prev) => prev.filter((t) => t._id !== id));
+}
       } catch (err) {
         toast.error("Failed to delete task");
         console.error(err);
       }
     },
-    [token]
+    [token, listId]
   );
 
   const saveEdit = useCallback(
@@ -275,14 +331,14 @@ export function useTasks() {
         t._id === id ? { ...t, ...updatedFields, editing: false } : t
       );
       setTasks(updated);
-      localStorage.setItem("tasks", JSON.stringify(normalizeTasks(updated)));
+      localStorage.setItem(`tasks-${listId}`, JSON.stringify(normalizeTasks(updated)));
 
       if (!navigator.onLine) {
         setQueue((prev) => [
           ...prev,
           {
             type: "UPDATE",
-            url: `${API_URL}/tasks/${id}`,
+            url: `${API_URL}/lists/${listId}/tasks/${id}`,
             options: {
               method: "PUT",
               headers: { "Content-Type": "application/json" },
@@ -295,7 +351,7 @@ export function useTasks() {
       }
 
       try {
-        const res = await fetch(`${API_URL}/tasks/${id}`, {
+        const res = await fetch(`${API_URL}/lists/${listId}/tasks/${id}`, {
           method: "PUT",
           headers: {
             "Content-Type": "application/json",
@@ -314,18 +370,19 @@ export function useTasks() {
         if (!res.ok) throw new Error("Failed to update task");
 
         const updatedFromServer = await res.json();
-        if (!updatedFromServer.repeat) updatedFromServer.repeat = null;
+if (!updatedFromServer.repeat) updatedFromServer.repeat = null;
 
-        setTasks((prev) =>
-          prev.map((t) => (t._id === id ? { ...updatedFromServer, editing: false } : t))
-        );
+setTasks((prev) =>
+  mergeTasks([ { ...updatedFromServer, editing: false } ], prev)
+);
+
         toast.success("Task updated");
       } catch (err) {
         toast.error(err.message || "Failed to update task");
         console.error(err);
       }
     },
-    [token]
+    [token, listId]
   );
 
   // -------------------
@@ -346,14 +403,14 @@ export function useTasks() {
       ];
 
       setTasks(withOrders);
-      localStorage.setItem("tasks", JSON.stringify(withOrders));
+      localStorage.setItem(`tasks-${listId}`, JSON.stringify(withOrders));
 
       if (!navigator.onLine) {
         setQueue((prev) => [
           ...prev,
           {
             type: "REORDER",
-            url: `${API_URL}/tasks/reorder`,
+            url: `${API_URL}/lists/${listId}/tasks/reorder`,
             options: {
               method: "PUT",
               headers: { "Content-Type": "application/json" },
@@ -366,7 +423,7 @@ export function useTasks() {
       }
 
       try {
-        const res = await fetch(`${API_URL}/tasks/reorder`, {
+        const res = await fetch(`${API_URL}/lists/${listId}/tasks/reorder`, {
           method: "PUT",
           headers: {
             "Content-Type": "application/json",
@@ -377,9 +434,9 @@ export function useTasks() {
         });
         if (res.ok) {
           const data = await res.json();
-          data.sort((a, b) => a.order - b.order);
+          data.sort((a, b) => (a.order ?? 0) - (b.order ?? 0));
           setTasks(data);
-          localStorage.setItem("tasks", JSON.stringify(data));
+          localStorage.setItem(`tasks-${listId}`, JSON.stringify(data));
           toast.success("Recurring order updated");
         }
       } catch (err) {
@@ -387,7 +444,7 @@ export function useTasks() {
         console.error(err);
       }
     },
-    [token]
+    [token, listId]
   );
 
   const reorderNonRecurring = useCallback(
@@ -405,14 +462,14 @@ export function useTasks() {
       ];
 
       setTasks(withOrders);
-      localStorage.setItem("tasks", JSON.stringify(withOrders));
+      localStorage.setItem(`tasks-${listId}`, JSON.stringify(withOrders));
 
       if (!navigator.onLine) {
         setQueue((prev) => [
           ...prev,
           {
             type: "REORDER",
-            url: `${API_URL}/tasks/reorder`,
+            url: `${API_URL}/lists/${listId}/tasks/reorder`,
             options: {
               method: "PUT",
               headers: { "Content-Type": "application/json" },
@@ -425,7 +482,7 @@ export function useTasks() {
       }
 
       try {
-        const res = await fetch(`${API_URL}/tasks/reorder`, {
+        const res = await fetch(`${API_URL}/lists/${listId}/tasks/reorder`, {
           method: "PUT",
           headers: {
             "Content-Type": "application/json",
@@ -436,9 +493,9 @@ export function useTasks() {
         });
         if (res.ok) {
           const data = await res.json();
-          data.sort((a, b) => a.order - b.order);
+          data.sort((a, b) => (a.order ?? 0) - (b.order ?? 0));
           setTasks(data);
-          localStorage.setItem("tasks", JSON.stringify(data));
+          localStorage.setItem(`tasks-${listId}`, JSON.stringify(data));
           toast.success("Non-recurring order updated");
         }
       } catch (err) {
@@ -446,7 +503,7 @@ export function useTasks() {
         console.error(err);
       }
     },
-    [token]
+    [token, listId]
   );
 
   // -------------------
@@ -464,7 +521,7 @@ export function useTasks() {
   // Queue Sync
   // -------------------
   useEffect(() => {
-    if (!queue.length) return;
+    if (!queue.length || !listId) return;
     let cancelled = false;
 
     const trySync = async () => {
@@ -473,6 +530,7 @@ export function useTasks() {
       const newQueue = [...queue];
       const tempIdMap = {};
 
+      // First: process ADDs (to map temp ids -> real ids)
       for (const action of queue.filter((a) => a.type === "ADD")) {
         try {
           const headers = { ...(action.options.headers || {}) };
@@ -494,7 +552,8 @@ export function useTasks() {
         }
       }
 
-      for (const action of newQueue) {
+      // Then: process remaining actions, substituting temp ids where needed
+      for (const action of [...newQueue]) {
         try {
           let realUrl = action.url;
           if (action.dependsOn && tempIdMap[action.dependsOn]) {
@@ -517,17 +576,24 @@ export function useTasks() {
 
       setQueue(newQueue);
 
+      // Final: refresh canonical list from server
       try {
-        const res2 = await fetch(`${API_URL}/tasks`, {
+        const res2 = await fetch(`${API_URL}/lists/${listId}/tasks`, {
           headers: { Authorization: `Bearer ${token}` },
           cache: "no-store",
         });
         if (res2.ok) {
-          const data = await res2.json();
-          data.sort((a, b) => a.order - b.order);
-          setTasks(data);
-          localStorage.setItem("tasks", JSON.stringify(data));
-        }
+  const data = await res2.json();
+  const normalized = normalizeTasks(data);
+
+  const saved = localStorage.getItem(`tasks-${listId}`);
+const local = saved ? normalizeTasks(JSON.parse(saved)) : [];
+const merged = mergeTasks(normalized, local);
+
+
+  setTasks(merged);
+  localStorage.setItem(`tasks-${listId}`, JSON.stringify(merged));
+}
       } catch (err) {
         console.error("Failed to refresh tasks after sync", err);
       }
@@ -535,15 +601,16 @@ export function useTasks() {
 
     window.addEventListener("online", trySync);
     trySync();
+
     return () => {
       cancelled = true;
       window.removeEventListener("online", trySync);
     };
-  }, [queue, token]);
+  }, [queue, token, listId]);
 
   return {
     tasks,
-    loading, 
+    loading,
     addTask,
     toggleTask,
     deleteTask,
@@ -553,5 +620,6 @@ export function useTasks() {
     startEdit,
     stopEdit,
     setTasks,
+    queue,
   };
 }

@@ -1,6 +1,8 @@
 import { useState, useEffect } from "react";
 import toast, { Toaster } from "react-hot-toast";
 import { useTasks } from "../hooks/useTasks";
+import { useLists } from "../hooks/useLists";
+import { useCollaborativeTasks } from "../hooks/useCollaborativeTasks"; 
 import { useAuth } from "../context/AuthContext"; 
 import {
   DndContext,
@@ -16,6 +18,7 @@ import {
   useSortable,
 } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
+
 
 const API_URL = process.env.REACT_APP_API_URL || "http://localhost:5000";
 
@@ -100,10 +103,11 @@ const formatDateForInput = (dateStr) => {
   return local.toISOString().slice(0, 16); 
 };
 
-function Todo() {
+function Todo()  {
   const { user } = useAuth();
+  const { lists, currentList, selectList, createList, loading: listsLoading } = useLists();
   const { tasks, addTask, toggleTask, deleteTask, startEdit, saveEdit, setTasks } =
-    useTasks();
+    useTasks(currentList?._id);
   const [input, setInput] = useState("");
   const [dueDate, setDueDate] = useState("");
   const [priority, setPriority] = useState("medium");
@@ -118,6 +122,7 @@ function Todo() {
   const stopEdit = () => {
   setTasks(prev => prev.map(t => ({ ...t, editing: false })));
 };
+useCollaborativeTasks(currentList?._id);
 
 useEffect(() => {
   const registerPush = async () => {
@@ -156,11 +161,7 @@ function urlBase64ToUint8Array(base64String) {
   const padding = "=".repeat((4 - base64String.length % 4) % 4);
   const base64 = (base64String + padding).replace(/-/g, "+").replace(/_/g, "/");
   const rawData = window.atob(base64);
-  const outputArray = new Uint8Array(rawData.length);
-  for (let i = 0; i < rawData.length; ++i) {
-    outputArray[i] = rawData.charCodeAt(i);
-  }
-  return outputArray;
+  return Uint8Array.from([...rawData].map((c) => c.charCodeAt(0)));
 }
 
   // PWA install prompt
@@ -202,24 +203,24 @@ function urlBase64ToUint8Array(base64String) {
 
   // Offline-first fetch tasks
   useEffect(() => {
-    if (!user) return;
+    if (!user || !currentList?._id) return;
     const fetchTasks = async () => {
       const token = localStorage.getItem("token");
       if (!navigator.onLine) {
-        const saved = localStorage.getItem("tasks");
+        const saved = localStorage.getItem(`tasks-${currentList?._id}`);
         if (saved) setTasks(JSON.parse(saved));
         return;
       }
 
       try {
       setLoading(true); // start loading
-      const res = await fetch(`${API_URL}/tasks`, { 
+      const res = await fetch(`${API_URL}/lists/${currentList?._id}/tasks`, { 
         headers: { Authorization: `Bearer ${token}` },
         cache: "no-store"   // prevents browser from reusing stale cached responses
       });
       const data = await res.json();
       setTasks(data);
-      localStorage.setItem("tasks", JSON.stringify(data));
+      localStorage.setItem(`tasks-${currentList?._id}`, JSON.stringify(data));
     } catch (err) {
       toast.error("Failed to load tasks");
       console.error(err);
@@ -229,11 +230,13 @@ function urlBase64ToUint8Array(base64String) {
   };
 
   fetchTasks();
-}, [user, setTasks]);
+}, [user, currentList, setTasks]);
 
   useEffect(() => {
-    localStorage.setItem("tasks", JSON.stringify(tasks));
-  }, [tasks]);
+  if (currentList?._id) {
+    localStorage.setItem(`tasks-${currentList?._id}`, JSON.stringify(tasks));
+  }
+}, [tasks, currentList]);
 
 
   const handleDragEnd = async (event) => {
@@ -258,27 +261,31 @@ function urlBase64ToUint8Array(base64String) {
     : [...newList, ...recurringTasks];
 
   setTasks(newTasks);
-  localStorage.setItem("tasks", JSON.stringify(newTasks));
+  localStorage.setItem(`tasks-${currentList?._id}`, JSON.stringify(newTasks));
 
   // Sync with backend if online
   if (!navigator.onLine) return;
 
   try {
     const token = localStorage.getItem("token");
-    const res = await fetch(`${API_URL}/tasks/reorder`, {
+    const res = await fetch(`${API_URL}/lists/${currentList?._id}/tasks/reorder`, {
       method: "PUT",
       headers: {
         "Content-Type": "application/json",
         Authorization: `Bearer ${token}`,
       },
-      body: JSON.stringify({ orderedIds: newTasks.map((t) => t._id) }),
+      body: JSON.stringify({
+  orderedIds: newTasks
+    .filter((t) => !t._id.startsWith("temp-"))
+    .map((t) => t._id),
+}),
     });
 
     if (!res.ok) throw new Error("Failed to save order");
 
     const updatedTasks = await res.json();
     setTasks(updatedTasks);
-    localStorage.setItem("tasks", JSON.stringify(updatedTasks));
+    localStorage.setItem(`tasks-${currentList?._id}`, JSON.stringify(updatedTasks));
   } catch (err) {
     toast.error("Failed to save task order");
     console.error(err);
@@ -316,6 +323,51 @@ const nonRecurringTasks = filteredTasks.filter(t => !t.repeat);
 
   if (!user) return <AuthForm />;
 
+  // --------------------
+  // Show Lists First
+  // --------------------
+  // If no list selected → show the list catalog
+  if (!currentList) {
+    return (
+      <div className="p-6">
+        {installable && (
+            <button
+              onClick={handleInstallClick}
+              className="mb-4 w-full bg-green-600 text-white py-2 rounded-lg hover:bg-green-700"
+            >
+              📲 Install App
+            </button>
+          )}
+        <h1 className="text-xl font-bold mb-4">My Lists</h1>
+        {listsLoading ? (
+          <p>Loading lists...</p>
+        ) : (
+          <ul>
+            {lists.map((list) => (
+              <li key={list._id} className="cursor-pointer hover:underline"
+                  onClick={() => selectList(list)}>{list.name}
+              </li>
+            ))}
+          </ul>
+        )}
+
+        <button
+          onClick={() => {
+            const name = prompt("Enter new list name:");
+            if (name) createList(name);
+          }}
+          className="mt-4 bg-blue-500 text-white px-3 py-1 rounded"
+        >
+          ➕ Add List
+        </button>
+      </div>
+    );
+  }
+
+  // --------------------
+  // Tasks View
+  // --------------------
+
   return (
   <>
       <Toaster />
@@ -327,16 +379,13 @@ const nonRecurringTasks = filteredTasks.filter(t => !t.repeat);
       ) : (
         <div className="bg-white dark:bg-gray-900 text-gray-900 dark:text-gray-100 p-4 sm:p-6 rounded-xl shadow-xl w-full max-w-lg sm:max-w-md mx-auto flex flex-col justify-between min-h-[90vh]">
           <div>
-          <h1 className="text-2xl font-bold mb-4 text-center">📅 My To-Do List</h1>
-
-          {installable && (
-            <button
-              onClick={handleInstallClick}
-              className="mb-4 w-full bg-green-600 text-white py-2 rounded-lg hover:bg-green-700"
-            >
-              📲 Install App
-            </button>
-          )}
+          <h1 className="text-2xl font-bold mb-4 text-center">📅 {currentList.name}</h1>
+           <button
+        onClick={() => selectList(null)}
+        className="mb-4 text-sm text-blue-500 underline"
+      >
+        ← Back to Lists
+      </button>
 
           {/* Filters */}
           <div className="flex flex-col sm:flex-row gap-2 sm:gap-0 sm:justify-between mb-3">
