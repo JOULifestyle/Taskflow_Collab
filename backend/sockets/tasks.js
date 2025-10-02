@@ -13,65 +13,96 @@ async function userHasRole(userId, listId, role = "editor") {
 }
 
 function registerTaskHandlers(io, socket) {
-  console.log("✅ Socket connected:", socket.userId);
+  console.log("✅ Task handlers registered for:", socket.userId);
 
   // Join list room
   socket.on("join-list", (listId) => {
+    if (!listId) return;
     socket.join(`list:${listId}`);
+    console.log(`📌 User ${socket.userId} joined list:${listId}`);
   });
 
+  // Leave list room
   socket.on("leave-list", (listId) => {
+    if (!listId) return;
     socket.leave(`list:${listId}`);
+    console.log(`📌 User ${socket.userId} left list:${listId}`);
   });
 
   // Create task
-  socket.on("task:create", async (payload) => {
+  socket.on("task:create", async ({ listId, text, ...rest }) => {
     try {
-      const { listId, text } = payload;
+      if (!listId || !text) {
+        return socket.emit("error", { message: "listId and text required" });
+      }
+
       if (!(await userHasRole(socket.userId, listId, "editor"))) {
         return socket.emit("error", { message: "Not authorized" });
       }
+
       const task = await Task.create({
         userId: socket.userId,
         listId,
         text,
         completed: false,
+        ...rest, // allow optional fields like due, priority, etc.
       });
+
       io.to(`list:${listId}`).emit("task:created", task);
     } catch (err) {
       console.error("task:create error:", err);
+      socket.emit("error", { message: "Failed to create task" });
     }
   });
 
   // Update task
-  socket.on("task:update", async (payload) => {
+  socket.on("task:update", async ({ listId, taskId, updates }) => {
     try {
-      const { listId, taskId, updates } = payload;
+      if (!listId || !taskId || !updates) {
+        return socket.emit("error", { message: "listId, taskId and updates required" });
+      }
+
       if (!(await userHasRole(socket.userId, listId, "editor"))) {
         return socket.emit("error", { message: "Not authorized" });
       }
+
       const task = await Task.findOneAndUpdate(
         { _id: taskId, listId },
         updates,
         { new: true }
       );
+
+      if (!task) {
+        return socket.emit("error", { message: "Task not found" });
+      }
+
       io.to(`list:${listId}`).emit("task:updated", task);
     } catch (err) {
       console.error("task:update error:", err);
+      socket.emit("error", { message: "Failed to update task" });
     }
   });
 
   // Delete task
-  socket.on("task:delete", async (payload) => {
+  socket.on("task:delete", async ({ listId, taskId }) => {
     try {
-      const { listId, taskId } = payload;
+      if (!listId || !taskId) {
+        return socket.emit("error", { message: "listId and taskId required" });
+      }
+
       if (!(await userHasRole(socket.userId, listId, "editor"))) {
         return socket.emit("error", { message: "Not authorized" });
       }
-      await Task.deleteOne({ _id: taskId, listId });
+
+      const deleted = await Task.deleteOne({ _id: taskId, listId });
+      if (deleted.deletedCount === 0) {
+        return socket.emit("error", { message: "Task not found" });
+      }
+
       io.to(`list:${listId}`).emit("task:deleted", { taskId });
     } catch (err) {
       console.error("task:delete error:", err);
+      socket.emit("error", { message: "Failed to delete task" });
     }
   });
 }

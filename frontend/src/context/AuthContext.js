@@ -1,7 +1,16 @@
-import { createContext, useContext, useState, useEffect } from "react";
+import { createContext, useContext, useState, useEffect, useCallback } from "react";
 import toast from "react-hot-toast";
 
 const AuthContext = createContext();
+
+function decodeJwt(token) {
+  try {
+    const payload = JSON.parse(atob(token.split(".")[1]));
+    return payload;
+  } catch {
+    return null;
+  }
+}
 
 export const AuthProvider = ({ children }) => {
   const [user, setUser] = useState(null); // { username, token }
@@ -9,8 +18,17 @@ export const AuthProvider = ({ children }) => {
   useEffect(() => {
     const token = localStorage.getItem("token");
     const username = localStorage.getItem("username");
+
     if (token && username) {
-      setUser({ token, username });
+      const payload = decodeJwt(token);
+
+      //  Check if token is expired
+      if (payload?.exp && Date.now() >= payload.exp * 1000) {
+        console.warn("Token expired, logging out");
+        logout();
+      } else {
+        setUser({ token, username, _id: payload?.id, });
+      }
     }
   }, []);
 
@@ -21,11 +39,13 @@ export const AuthProvider = ({ children }) => {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ username, password }),
       });
+
       const data = await res.json();
       if (res.ok) {
         localStorage.setItem("token", data.token);
         localStorage.setItem("username", data.username);
-        setUser({ token: data.token, username: data.username });
+        const payload = decodeJwt(data.token);
+        setUser({ token: data.token, username: data.username, _id: payload?.id, });
         toast.success("Logged in successfully!");
         return true;
       } else {
@@ -46,11 +66,13 @@ export const AuthProvider = ({ children }) => {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ username, password }),
       });
+
       const data = await res.json();
       if (res.ok) {
         localStorage.setItem("token", data.token);
         localStorage.setItem("username", data.username);
-        setUser({ token: data.token, username: data.username });
+        const payload = decodeJwt(data.token);
+        setUser({ token: data.token, username: data.username, _id: payload?.id, });
         toast.success("Signed up successfully!");
         return true;
       } else {
@@ -64,11 +86,12 @@ export const AuthProvider = ({ children }) => {
     }
   };
 
-  const logout = () => {
+  const logout = useCallback(() => {
     localStorage.removeItem("token");
     localStorage.removeItem("username");
     setUser(null);
-  };
+    toast("You’ve been logged out");
+  }, []);
 
   return (
     <AuthContext.Provider value={{ user, token: user?.token, login, signup, logout }}>

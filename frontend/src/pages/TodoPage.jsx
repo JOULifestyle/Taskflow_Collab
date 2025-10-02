@@ -4,6 +4,7 @@ import { useTasks } from "../hooks/useTasks";
 import { useLists } from "../hooks/useLists";
 import { useCollaborativeTasks } from "../hooks/useCollaborativeTasks"; 
 import { useAuth } from "../context/AuthContext"; 
+import { useSocket } from "../context/SocketProvider";
 import {
   DndContext,
   closestCenter,
@@ -18,66 +19,11 @@ import {
   useSortable,
 } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
+import MembersModal from "../components/MembersModal";
+import ShareList from "../components/ShareList";
 
 
 const API_URL = process.env.REACT_APP_API_URL || "http://localhost:5000";
-
-// Login/Signup Component
-function AuthForm() {
-  const { login, signup } = useAuth();
-  const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
-  const [mode, setMode] = useState("login"); // toggle login/signup
-
-  const handleSubmit = async (e) => {
-    e.preventDefault();
-    try {
-      if (mode === "login") await login(email, password);
-      else await signup(email, password);
-      toast.success(`${mode} successful`);
-    } catch (err) {
-      toast.error(err.message || "Auth failed");
-    }
-  };
-
-  return (
-    <form
-      onSubmit={handleSubmit}
-      className="bg-white p-6 rounded-md shadow-md flex flex-col gap-3 w-full max-w-sm"
-    >
-      <h2 className="text-xl font-bold text-center">{mode === "login" ? "Login" : "Signup"}</h2>
-      <input
-        type="email"
-        placeholder="Email"
-        value={email}
-        onChange={(e) => setEmail(e.target.value)}
-        className="p-2 border rounded-md"
-        required
-      />
-      <input
-        type="password"
-        placeholder="Password"
-        value={password}
-        onChange={(e) => setPassword(e.target.value)}
-        className="p-2 border rounded-md"
-        required
-      />
-      <button className="bg-blue-600 text-white px-4 py-2 rounded-md hover:bg-blue-700">
-        {mode === "login" ? "Login" : "Signup"}
-      </button>
-      <p className="text-sm text-center">
-        {mode === "login" ? "Don't have an account?" : "Already have an account?"}{" "}
-        <button
-          type="button"
-          onClick={() => setMode(mode === "login" ? "signup" : "login")}
-          className="text-blue-500 underline"
-        >
-          {mode === "login" ? "Signup" : "Login"}
-        </button>
-      </p>
-    </form>
-  );
-}
 
 
 // Format ISO string for display in task list
@@ -105,7 +51,8 @@ const formatDateForInput = (dateStr) => {
 
 function Todo()  {
   const { user } = useAuth();
-  const { lists, currentList, selectList, createList, loading: listsLoading } = useLists();
+  const { socket } = useSocket();  
+  const { lists, currentList, selectList, createList, updateListName, deleteList, loading: listsLoading } = useLists();
   const { tasks, addTask, toggleTask, deleteTask, startEdit, saveEdit, setTasks } =
     useTasks(currentList?._id);
   const [input, setInput] = useState("");
@@ -118,11 +65,33 @@ function Todo()  {
   const [showForm, setShowForm] = useState(false);
   const [repeat, setRepeat] = useState("");
   const [severityFilter, setSeverityFilter] = useState("all");
+  const [showMembers, setShowMembers] = useState(false);
+  const [showShare, setShowShare] = useState(false);
   const [loading, setLoading] = useState(false);
+   const [editingId, setEditingId] = useState(null);
+  const [editValue, setEditValue] = useState("");
   const stopEdit = () => {
   setTasks(prev => prev.map(t => ({ ...t, editing: false })));
 };
 useCollaborativeTasks(currentList?._id);
+
+//  Join/leave list rooms + listen for list:shared updates
+  useEffect(() => {
+  if (!currentList?._id || !socket) return;
+
+  socket.emit("join-list", currentList._id);
+
+  socket.on("list:shared", (data) => {
+    console.log("📢 List shared update:", data);
+    toast.success(`User added/updated: ${data.userId} as ${data.role}`);
+    // optionally: refresh members here
+  });
+
+  return () => {
+    socket.emit("leave-list", currentList._id);
+    socket.off("list:shared");
+  };
+}, [currentList?._id, socket]);
 
 useEffect(() => {
   const registerPush = async () => {
@@ -321,55 +290,134 @@ function urlBase64ToUint8Array(base64String) {
   const recurringTasks = filteredTasks.filter(t => t.repeat);
 const nonRecurringTasks = filteredTasks.filter(t => !t.repeat);
 
-  if (!user) return <AuthForm />;
-
   // --------------------
   // Show Lists First
   // --------------------
   // If no list selected → show the list catalog
-  if (!currentList) {
-    return (
-      <div className="p-6">
-        {installable && (
-            <button
-              onClick={handleInstallClick}
-              className="mb-4 w-full bg-green-600 text-white py-2 rounded-lg hover:bg-green-700"
-            >
-              📲 Install App
-            </button>
-          )}
-        <h1 className="text-xl font-bold mb-4">My Lists</h1>
-        {listsLoading ? (
-          <p>Loading lists...</p>
-        ) : (
-          <ul>
-            {lists.map((list) => (
-              <li key={list._id} className="cursor-pointer hover:underline"
-                  onClick={() => selectList(list)}>{list.name}
-              </li>
-            ))}
-          </ul>
-        )}
 
+
+if (!currentList) {
+
+
+  const handleEdit = async (listId) => {
+    if (!editValue.trim()) return;
+    await updateListName(listId, editValue); //  now comes from hook
+    setEditingId(null);
+    setEditValue("");
+  };
+
+  return (
+    <div className="max-w-md mx-auto p-6 bg-white dark:bg-gray-900 rounded-2xl shadow-lg">
+      {/* Install PWA */}
+      {installable && (
         <button
-          onClick={() => {
-            const name = prompt("Enter new list name:");
-            if (name) createList(name);
-          }}
-          className="mt-4 bg-blue-500 text-white px-3 py-1 rounded"
+          onClick={handleInstallClick}
+          className="mb-4 w-full flex items-center justify-center gap-2 bg-green-600 dark:bg-green-700 text-white py-2 rounded-lg hover:bg-green-700 dark:hover:bg-green-800 transition"
         >
-          ➕ Add List
+          📲 Install App
         </button>
-      </div>
-    );
-  }
+      )}
+
+      <h1 className="text-2xl font-bold mb-4 text-gray-800 dark:text-gray-100">
+        My Lists
+      </h1>
+
+      {listsLoading ? (
+        <p className="text-gray-500 dark:text-gray-400">Loading lists...</p>
+      ) : lists.length === 0 ? (
+        <p className="text-gray-500 dark:text-gray-400">No lists yet. Add one below!</p>
+      ) : (
+        <ul className="space-y-3">
+          {lists.map((list) => (
+           <li
+  key={list._id}
+  className="flex justify-between items-center bg-gray-100 dark:bg-gray-800 px-4 py-3 rounded-lg shadow-sm hover:shadow-md transition"
+>
+  {/* Editable List Name */}
+  {editingId === list._id ? (
+    <input
+      value={editValue}
+      onChange={(e) => setEditValue(e.target.value)}
+      onBlur={() => handleEdit(list._id)}
+      onKeyDown={(e) => e.key === "Enter" && handleEdit(list._id)}
+      autoFocus
+      className="flex-1 px-2 py-1 border border-gray-300 dark:border-gray-600 rounded bg-white dark:bg-gray-700 text-gray-800 dark:text-gray-200"
+    />
+  ) : (
+    <span
+      className="flex-1 cursor-pointer font-medium text-gray-800 dark:text-gray-200"
+      onClick={() => selectList(list)}
+    >
+      {list.name}
+    </span>
+  )}
+
+  {/* Action buttons */}
+  <div className="flex items-center gap-2 ml-3">
+    {/* Edit Button */}
+    <button
+      onClick={() => {
+        setEditingId(list._id);
+        setEditValue(list.name);
+      }}
+      className="text-xs bg-yellow-500 hover:bg-yellow-600 text-white px-2 py-1 rounded-md transition"
+    >
+      ✏️ Edit
+    </button>
+
+    {/* Delete Button */}
+    <button
+      onClick={() => {
+        if (window.confirm(`Delete list "${list.name}"?`)) {
+          deleteList(list._id); //  use from hook
+        }
+      }}
+      className="text-xs bg-red-500 hover:bg-red-600 text-white px-3 py-1 rounded-md transition"
+    >
+      🗑 Delete
+    </button>
+  </div>
+</li>
+          ))}
+        </ul>
+      )}
+
+      {/* Add List Form */}
+      <form
+        className="mt-6 flex gap-2"
+        onSubmit={(e) => {
+          e.preventDefault();
+          const formData = new FormData(e.target);
+          const name = formData.get("listName");
+          if (name) {
+            createList(name);
+            e.target.reset();
+          }
+        }}
+      >
+        <input
+          type="text"
+          name="listName"
+          placeholder="Enter new list name"
+          className="flex-1 px-3 py-2 border border-gray-300 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-800 text-gray-800 dark:text-gray-200 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500"
+        />
+        <button
+          type="submit"
+          className="flex items-center justify-center gap-1 bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg transition"
+        >
+          ➕ Add
+        </button>
+      </form>
+    </div>
+  );
+}
 
   // --------------------
   // Tasks View
   // --------------------
 
   return (
-  <>
+    <>
       <Toaster />
 
       {loading ? (
@@ -379,14 +427,50 @@ const nonRecurringTasks = filteredTasks.filter(t => !t.repeat);
       ) : (
         <div className="bg-white dark:bg-gray-900 text-gray-900 dark:text-gray-100 p-4 sm:p-6 rounded-xl shadow-xl w-full max-w-lg sm:max-w-md mx-auto flex flex-col justify-between min-h-[90vh]">
           <div>
-          <h1 className="text-2xl font-bold mb-4 text-center">📅 {currentList.name}</h1>
-           <button
-        onClick={() => selectList(null)}
-        className="mb-4 text-sm text-blue-500 underline"
-      >
-        ← Back to Lists
-      </button>
+            {/* Title & Back */}
+            <h1 className="text-2xl font-bold mb-2 text-center">📅 {currentList.name}</h1>
+            <p className="text-center text-sm text-gray-500 mb-4">
+              List ID: <span className="font-mono">{currentList._id}</span>
+            </p>
+            <button
+              onClick={() => selectList(null)}
+              className="mb-4 text-sm text-blue-500 underline"
+            >
+              ← Back to Lists
+            </button>
 
+            {/* New buttons */}
+            <div className="flex gap-2 mb-6">
+              <button
+                onClick={() => setShowMembers(true)}
+                className="bg-gray-200 dark:bg-gray-700 px-3 py-1 rounded"
+              >
+                Manage Members
+              </button>
+              <button
+                onClick={() => setShowShare((prev) => !prev)}
+                className="bg-gray-200 dark:bg-gray-700 px-3 py-1 rounded"
+              >
+                {showShare ? "Close Share" : "Share List"}
+              </button>
+            </div>
+
+            {/* Inline ShareList */}
+            {showShare && (
+              <div className="mb-6">
+                <ShareList listId={currentList._id} token={localStorage.getItem("token")} />
+              </div>
+            )}
+
+            {/* Members Modal */}
+            {showMembers && (
+              <MembersModal
+                list={currentList}
+                token={localStorage.getItem("token")}
+                onClose={() => setShowMembers(false)}
+                currentUser={user}
+              />
+            )}
           {/* Filters */}
           <div className="flex flex-col sm:flex-row gap-2 sm:gap-0 sm:justify-between mb-3">
             <select

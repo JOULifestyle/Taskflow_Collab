@@ -15,13 +15,26 @@ export const SocketProvider = ({ children }) => {
       return;
     }
 
+    // create the socket instance
     const s = createSocket(user.token);
-    setSocket(s);
 
+    // listen for connect event before setting
+    s.on("connect", () => {
+      console.log("✅ Socket connected:", s.id);
+      setSocket(s);
+    });
+
+    s.on("connect_error", (err) => {
+      console.error("❌ Socket connection error:", err.message);
+    });
+
+    // cleanup only this socket
     return () => {
-      disconnectSocket();
+      if (s) {
+        s.disconnect();
+      }
     };
-  }, [user]);
+  }, [user?.token]);
 
   return (
     <SocketContext.Provider value={{ socket, getSocket }}>

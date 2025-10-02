@@ -1,4 +1,3 @@
-// src/socket/index.js
 import { io } from "socket.io-client";
 
 let socket;
@@ -7,18 +6,32 @@ const API_URL = process.env.REACT_APP_API_URL || "http://localhost:5000";
 
 export function createSocket(token) {
   if (socket) return socket;
+
   socket = io(API_URL, {
     auth: { token },
-    transports: ["websocket"], // faster & avoids polling
+    transports: ["websocket"], // skip polling for faster connection
     withCredentials: true,
+    reconnection: true,
+    reconnectionAttempts: 5,
+    reconnectionDelay: 1000,
   });
 
+  // --- Connection lifecycle ---
   socket.on("connect", () => {
     console.log("🔌 Connected to Socket.IO server:", socket.id);
   });
 
-  socket.on("disconnect", () => {
-    console.log("❌ Disconnected from Socket.IO server");
+  socket.on("disconnect", (reason) => {
+    console.log("❌ Disconnected from Socket.IO server:", reason);
+  });
+
+  socket.on("connect_error", (err) => {
+    console.error("⚠️ Socket connection error:", err.message);
+  });
+
+  // --- Global error handler from server ---
+  socket.on("error", (err) => {
+    console.error("🚨 Socket error event:", err);
   });
 
   return socket;
@@ -33,4 +46,43 @@ export function disconnectSocket() {
     socket.disconnect();
     socket = null;
   }
+}
+
+// --- Helper: subscribe/unsubscribe to a list room ---
+export function joinList(listId) {
+  if (socket && listId) {
+    socket.emit("join-list", listId);
+  }
+}
+
+export function leaveList(listId) {
+  if (socket && listId) {
+    socket.emit("leave-list", listId);
+  }
+}
+
+// --- NEW: listen for member updates/removals ---
+export function onMemberEvents({ onShared, onRemoved }) {
+  if (!socket) return;
+
+  if (onShared) {
+    socket.on("list:shared", ({ listId, userId, role }) => {
+      console.log("📡 list:shared", { listId, userId, role });
+      onShared({ listId, userId, role });
+    });
+  }
+
+  if (onRemoved) {
+    socket.on("list:memberRemoved", ({ listId, userId }) => {
+      console.log("📡 list:memberRemoved", { listId, userId });
+      onRemoved({ listId, userId });
+    });
+  }
+}
+
+// --- helper to cleanup listeners when leaving modal/page ---
+export function offMemberEvents() {
+  if (!socket) return;
+  socket.off("list:shared");
+  socket.off("list:memberRemoved");
 }

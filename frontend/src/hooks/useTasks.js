@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback, useRef } from "react";
 import toast from "react-hot-toast";
 import { useAuth } from "../context/AuthContext";
+import { useSocket } from "../context/SocketProvider";
 
 const API_URL = process.env.REACT_APP_API_URL || "http://localhost:5000";
 
@@ -44,7 +45,9 @@ function mergeTasks(apiTasks, localTasks) {
   return merged;
 }
 export function useTasks(listId) {
-  const { token } = useAuth();
+  const { user } = useAuth();
+  const { socket } = useSocket(); 
+  const token = user?.token; 
   const [tasks, setTasks] = useState([]);
   const tasksRef = useRef(tasks);
   const [queue, setQueue] = useState([]);
@@ -54,7 +57,29 @@ export function useTasks(listId) {
     tasksRef.current = tasks;
   }, [tasks]);
 
-   // 🔑 Reset when no list is selected
+  //  listen for socket events
+  useEffect(() => {
+    if (!socket) return;
+
+    const handleUpdated = (updatedTask) => {
+      console.log("📢 Got task:updated from server:", updatedTask);
+      if (updatedTask.listId !== listId) return; // only update if same list
+
+      setTasks((prev) => 
+        prev.map((t) =>
+      t._id === updatedTask._id ? { ...t, ...updatedTask } : t
+    )
+      );
+    };
+
+    socket.on("task:updated", handleUpdated);
+
+    return () => {
+      socket.off("task:updated", handleUpdated);
+    };
+  }, [socket, listId]);
+
+   //  Reset when no list is selected
   useEffect(() => {
     if (!listId) {
       setTasks([]); // clear tasks
@@ -274,7 +299,11 @@ const merged = mergeTasks(normalized, local);
         });
         if (!res.ok) throw new Error("Failed to toggle task");
         const updatedFromServer = await res.json();
-setTasks((prev) => mergeTasks([updatedFromServer], prev));
+setTasks((prev) =>
+  prev.map((t) =>
+    t._id === updatedFromServer._id ? { ...t, ...updatedFromServer } : t
+  )
+);
       } catch (err) {
         toast.error("Failed to update task");
         console.error(err);
@@ -373,7 +402,11 @@ setTasks((prev) => mergeTasks([updatedFromServer], prev));
 if (!updatedFromServer.repeat) updatedFromServer.repeat = null;
 
 setTasks((prev) =>
-  mergeTasks([ { ...updatedFromServer, editing: false } ], prev)
+  prev.map((t) =>
+    t._id === updatedFromServer._id
+      ? { ...t, ...updatedFromServer, editing: false }
+      : t
+  )
 );
 
         toast.success("Task updated");

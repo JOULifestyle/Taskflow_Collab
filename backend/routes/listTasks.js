@@ -5,6 +5,9 @@ const auth = require("../middleware/auth");
 const authorizeList = require("../middleware/authorizeList");
 const mongoose = require("mongoose");
 
+const Subscription = require("../models/Subscription");
+const webpush = require("web-push");
+
 // Get all tasks in a list
 router.get("/", auth, authorizeList("viewer"), async (req, res) => {
   try {
@@ -74,6 +77,24 @@ router.put("/:taskId", auth, authorizeList("editor"), async (req, res) => {
     );
 
     if (!task) return res.status(404).json({ error: "Task not found" });
+     //  Emit event
+    const io = req.app.get("io");
+    io.to(req.user.id).emit("task:updated", task);
+    // 🔔 ALSO send push notification
+    const subs = await Subscription.find({ userId: req.user.id });
+    const payload = JSON.stringify({
+      title: "Task Updated",
+      body: `✏️ ${task.text} was updated`,
+    });
+    for (const s of subs) {
+      try {
+        await webpush.sendNotification(s.subscription, payload);
+        console.log("✅ Notification sent to", s.userId);
+      } catch (err) {
+        console.error("Push error:", err.statusCode || err.message);
+      }
+    }
+
     res.json(task);
   } catch (err) {
     console.error("Update task error:", err);

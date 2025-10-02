@@ -45,7 +45,7 @@ webpush.setVapidDetails(
 );
 
 // --- Socket.IO ---
-const io = new Server(server, { cors: { origin: "*" } });
+const io = new Server(server, { cors: { origin: "*", methods: ["GET", "POST", "PUT", "DELETE"] } });
 app.set("io", io);
 
 io.use((socket, next) => {
@@ -62,6 +62,8 @@ io.use((socket, next) => {
 
 io.on("connection", (socket) => {
   console.log(`⚡ User connected: ${socket.userId}`);
+  // Join user-specific room
+  socket.join(socket.userId);
   registerTaskHandlers(io, socket);
 });
 
@@ -86,6 +88,7 @@ cron.schedule("* * * * *", async () => {
 
     for (const t of tasks) {
       const diffMin = Math.floor((new Date(t.due) - now) / 60000);
+      console.log(`Task "${t.text}" diffMin = ${diffMin}, due = ${t.due}, now = ${now}`);
 
       let stage = null;
       if (diffMin === 15) stage = "15min";
@@ -93,15 +96,20 @@ cron.schedule("* * * * *", async () => {
       else if (diffMin === 0) stage = "0min";
 
       if (!stage) continue;
+      console.log(`➡️ Stage hit: ${stage} for task ${t._id}`);
 
       const log = await NotificationLog.findOneAndUpdate(
-        { taskId: t._id, stage },
+        { taskId: t._id, stage, due: t.due },
         { $setOnInsert: { sentAt: new Date() } },
         { upsert: true, new: false }
       );
-      if (log) continue; // already sent
+      if (log) {
+    console.log(`⚠️ Already sent before for stage=${stage}, task=${t._id}`);
+    continue;
+  }
 
       const subs = await Subscription.find({ userId: t.userId });
+      console.log(`📢 Found ${subs.length} subscriptions for user=${t.userId}`);
       const payload = JSON.stringify({
         title: "Task Reminder",
         body:
@@ -130,6 +138,8 @@ cron.schedule("* * * * *", async () => {
         r.completed = false;
         await r.save();
         console.log(`⟳ Recurring task "${r.text}" moved to next due: ${newDue}`);
+        // 🔥 Emit socket update to the task owner
+    io.to(r.userId.toString()).emit("task:updated", r);
       }
     }
   } catch (err) {
