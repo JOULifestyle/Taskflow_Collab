@@ -1,6 +1,7 @@
 const express = require("express");
 const router = express.Router({ mergeParams: true });
 const Task = require("../models/Task");
+const List = require("../models/List");
 const auth = require("../middleware/auth");
 const authorizeList = require("../middleware/authorizeList");
 const mongoose = require("mongoose");
@@ -47,6 +48,39 @@ router.post("/", auth, authorizeList("editor"), async (req, res) => {
 
     await task.save();
      console.log("✅ Task created in DB:", task);
+
+    // Get the list to find all members for notifications
+    const list = await List.findById(listId);
+    if (list) {
+      // Get all member user IDs (including the owner)
+      const memberIds = [list.owner, ...list.members.map(m => m.userId)];
+
+      //  Emit event via WebSocket to the list room (all connected members)
+      const io = req.app.get("io");
+      io.to(`list:${listId}`).emit("task:created", task);
+
+      //  Send push notifications to ALL list members
+      const subs = await Subscription.find({ userId: { $in: memberIds } });
+      const payload = JSON.stringify({
+        title: "New Task Added",
+        body: `📝 ${task.text} was added to the list`,
+      });
+
+      for (const s of subs) {
+        try {
+          const endpoint = s.subscription.endpoint || "";
+          const isFCM = endpoint.includes('fcm.googleapis.com');
+          const isWNS = endpoint.includes('notify.windows.com');
+          console.log(`📤 Sending notification to ${s.userId} via ${isFCM ? 'FCM' : isWNS ? 'WNS' : 'Unknown'}: ${endpoint}`);
+
+          await webpush.sendNotification(s.subscription, payload);
+          console.log("✅ Notification sent to", s.userId);
+        } catch (err) {
+          console.error(`❌ Push error for ${s.userId}:`, err.statusCode || err.message, err.body || '');
+        }
+      }
+    }
+
     res.json(task);
   } catch (err) {
     console.error("Create task error:", err);
@@ -77,21 +111,36 @@ router.put("/:taskId", auth, authorizeList("editor"), async (req, res) => {
     );
 
     if (!task) return res.status(404).json({ error: "Task not found" });
-     //  Emit event
+
+    // Get the list to find all members
+    const list = await List.findById(listId);
+    if (!list) return res.status(404).json({ error: "List not found" });
+
+    // Get all member user IDs (including the owner)
+    const memberIds = [list.owner, ...list.members.map(m => m.userId)];
+
+    //  Emit event via WebSocket to the list room (all connected members)
     const io = req.app.get("io");
-    io.to(req.user.id).emit("task:updated", task);
-    // 🔔 ALSO send push notification
-    const subs = await Subscription.find({ userId: req.user.id });
+    io.to(`list:${listId}`).emit("task:updated", task);
+
+    // 🔔 Send push notifications to ALL list members
+    const subs = await Subscription.find({ userId: { $in: memberIds } });
     const payload = JSON.stringify({
       title: "Task Updated",
       body: `✏️ ${task.text} was updated`,
     });
+
     for (const s of subs) {
       try {
+        const endpoint = s.subscription.endpoint || "";
+        const isFCM = endpoint.includes('fcm.googleapis.com');
+        const isWNS = endpoint.includes('notify.windows.com');
+        console.log(`📤 Sending notification to ${s.userId} via ${isFCM ? 'FCM' : isWNS ? 'WNS' : 'Unknown'}: ${endpoint}`);
+
         await webpush.sendNotification(s.subscription, payload);
         console.log("✅ Notification sent to", s.userId);
       } catch (err) {
-        console.error("Push error:", err.statusCode || err.message);
+        console.error(`❌ Push error for ${s.userId}:`, err.statusCode || err.message, err.body || '');
       }
     }
 
@@ -113,6 +162,40 @@ router.delete("/:taskId", auth, authorizeList("editor"), async (req, res) => {
     });
 
     if (!task) return res.status(404).json({ error: "Task not found" });
+
+    // Get the list to find all members for notifications
+    const list = await List.findById(listId);
+    if (list) {
+      // Get all member user IDs (including the owner)
+      const memberIds = [list.owner, ...list.members.map(m => m.userId)];
+
+      //  Emit event via WebSocket to the list room (all connected members)
+      const io = req.app.get("io");
+      console.log(`📡 Emitting task:deleted for task ${task._id} to list:${listId}`);
+      io.to(`list:${listId}`).emit("task:deleted", task._id);
+
+      //  Send push notifications to ALL list members
+      const subs = await Subscription.find({ userId: { $in: memberIds } });
+      const payload = JSON.stringify({
+        title: "Task Deleted",
+        body: `🗑️ ${task.text} was removed from the list`,
+      });
+
+      for (const s of subs) {
+        try {
+          const endpoint = s.subscription.endpoint || "";
+          const isFCM = endpoint.includes('fcm.googleapis.com');
+          const isWNS = endpoint.includes('notify.windows.com');
+          console.log(`📤 Sending notification to ${s.userId} via ${isFCM ? 'FCM' : isWNS ? 'WNS' : 'Unknown'}: ${endpoint}`);
+
+          await webpush.sendNotification(s.subscription, payload);
+          console.log("✅ Notification sent to", s.userId);
+        } catch (err) {
+          console.error(`❌ Push error for ${s.userId}:`, err.statusCode || err.message, err.body || '');
+        }
+      }
+    }
+
     res.json({ success: true });
   } catch (err) {
     console.error("Delete task error:", err);

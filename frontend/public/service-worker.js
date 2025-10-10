@@ -67,6 +67,7 @@ self.addEventListener("fetch", (event) => {
 // Push notifications
 self.addEventListener("push", (event) => {
   console.log("📬 Push received:", event);
+
   let data = {};
   if (event.data) {
     try {
@@ -79,12 +80,18 @@ self.addEventListener("push", (event) => {
   const title = data.title || "New Notification";
   const body = data.body || "You have a new task update";
 
-  event.waitUntil(
-    self.registration.showNotification(title, {
-      body,
-      icon: "/logo192.png",
-    })
-  );
+  const options = {
+    body,
+    icon: "/logo192.png",
+    badge: "/logo192.png",
+    vibrate: [200, 100, 200],
+    sound: "default", // ✅ Enables sound in Edge (and supported browsers)
+    data: {
+      url: data.url || "/", // open this page on click
+    },
+  };
+
+  event.waitUntil(self.registration.showNotification(title, options));
 });
 
 // Notification click

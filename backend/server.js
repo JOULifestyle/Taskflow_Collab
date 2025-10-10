@@ -17,6 +17,7 @@ const listTasksRoutes = require("./routes/listTasks");
 
 // Models
 const Task = require("./models/Task");
+const List = require("./models/List");
 const Subscription = require("./models/Subscription");
 const NotificationLog = require("./models/NotificationLog");
 
@@ -43,6 +44,10 @@ webpush.setVapidDetails(
   process.env.VAPID_PUBLIC_KEY,
   process.env.VAPID_PRIVATE_KEY
 );
+
+// Note: WNS credentials would be needed for native Windows apps,
+// but for PWAs, FCM works on all Chromium-based browsers including Edge
+console.log("🔑 VAPID keys configured for FCM push notifications");
 
 // --- Socket.IO ---
 const io = new Server(server, { cors: { origin: "*", methods: ["GET", "POST", "PUT", "DELETE"] } });
@@ -108,8 +113,31 @@ cron.schedule("* * * * *", async () => {
     continue;
   }
 
-      const subs = await Subscription.find({ userId: t.userId });
-      console.log(`📢 Found ${subs.length} subscriptions for user=${t.userId}`);
+      // Get the list to find all members
+      const list = await List.findById(t.listId);
+      if (!list) {
+        console.log(`⚠️ List not found for task ${t._id}, skipping notification`);
+        continue;
+      }
+
+      // Get all member user IDs (including the owner)
+      const memberIds = [list.owner, ...list.members.map(m => m.userId)];
+
+      // Send WebSocket notifications to all members
+      memberIds.forEach(memberId => {
+        io.to(memberId.toString()).emit("task:reminder", {
+          task: t,
+          stage,
+          diffMin,
+          message: stage === "0min"
+            ? `⏰ ${t.text} is due now`
+            : `⏳ ${t.text} is due in ${diffMin} minutes`
+        });
+      });
+
+      // Send push notifications to all members
+      const subs = await Subscription.find({ userId: { $in: memberIds } });
+      console.log(`📢 Found ${subs.length} subscriptions for ${memberIds.length} list members`);
       const payload = JSON.stringify({
         title: "Task Reminder",
         body:
@@ -120,10 +148,15 @@ cron.schedule("* * * * *", async () => {
 
       for (const s of subs) {
         try {
+          const endpoint = s.subscription.endpoint || "";
+          const isFCM = endpoint.includes('fcm.googleapis.com');
+          const isWNS = endpoint.includes('notify.windows.com');
+          console.log(`📤 Sending reminder to ${s.userId} via ${isFCM ? 'FCM' : isWNS ? 'WNS' : 'Unknown'}: ${endpoint}`);
+
           await webpush.sendNotification(s.subscription, payload);
-          console.log("✅ Notification sent to", s.userId);
+          console.log("✅ Reminder sent to", s.userId);
         } catch (err) {
-          console.error("Push error:", err.statusCode || err.message);
+          console.error(`❌ Push error for ${s.userId}:`, err.statusCode || err.message, err.body || '');
         }
       }
     }

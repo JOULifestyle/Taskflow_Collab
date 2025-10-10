@@ -7,22 +7,24 @@ import Layout from "./Layout";
 import { usePushNotifications } from "./hooks/usePushNotifications";
 import { useAuth } from "./context/AuthContext"; 
 import AuthPage from "./pages/AuthPage";
-import { createSocket, disconnectSocket } from "./socket";
 import ProtectedRoute from "./components/ProtectedRoute";
 
 export default function App() {
   const { token, logout } = useAuth();
-  const navigate = useNavigate();          
-  usePushNotifications(token); 
+  const navigate = useNavigate();
+  usePushNotifications(token);
 
   const [dark, setDark] = useState(false);
 
+  // Request notification permission for fallback notifications
   useEffect(() => {
-    if (token) {
-      createSocket(token);
+    if (token && "Notification" in window && Notification.permission === "default") {
+      Notification.requestPermission().then((permission) => {
+        console.log("🔔 Notification permission:", permission);
+      });
     }
-    return () => disconnectSocket();
   }, [token]);
+
 
   return (
     <Layout dark={dark}>

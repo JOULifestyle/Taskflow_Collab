@@ -13,8 +13,9 @@ function decodeJwt(token) {
 }
 
 export const AuthProvider = ({ children }) => {
-  const [user, setUser] = useState(null); // { username, token }
+  const [user, setUser] = useState(null);
 
+  //  Load token & username from localStorage on mount
   useEffect(() => {
     const token = localStorage.getItem("token");
     const username = localStorage.getItem("username");
@@ -22,12 +23,16 @@ export const AuthProvider = ({ children }) => {
     if (token && username) {
       const payload = decodeJwt(token);
 
-      //  Check if token is expired
+      // check if token is expired
       if (payload?.exp && Date.now() >= payload.exp * 1000) {
         console.warn("Token expired, logging out");
         logout();
       } else {
-        setUser({ token, username, _id: payload?.id, });
+        setUser({
+          token,
+          username,
+          _id: payload?.id,
+        });
       }
     }
   }, []);
@@ -45,7 +50,7 @@ export const AuthProvider = ({ children }) => {
         localStorage.setItem("token", data.token);
         localStorage.setItem("username", data.username);
         const payload = decodeJwt(data.token);
-        setUser({ token: data.token, username: data.username, _id: payload?.id, });
+        setUser({ token: data.token, username: data.username, _id: payload?.id });
         toast.success("Logged in successfully!");
         return true;
       } else {
@@ -72,7 +77,7 @@ export const AuthProvider = ({ children }) => {
         localStorage.setItem("token", data.token);
         localStorage.setItem("username", data.username);
         const payload = decodeJwt(data.token);
-        setUser({ token: data.token, username: data.username, _id: payload?.id, });
+        setUser({ token: data.token, username: data.username, _id: payload?.id });
         toast.success("Signed up successfully!");
         return true;
       } else {

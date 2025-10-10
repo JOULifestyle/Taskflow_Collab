@@ -68,12 +68,12 @@ function Todo()  {
   const [showMembers, setShowMembers] = useState(false);
   const [showShare, setShowShare] = useState(false);
   const [loading, setLoading] = useState(false);
-   const [editingId, setEditingId] = useState(null);
+    const [editingId, setEditingId] = useState(null);
   const [editValue, setEditValue] = useState("");
   const stopEdit = () => {
   setTasks(prev => prev.map(t => ({ ...t, editing: false })));
 };
-useCollaborativeTasks(currentList?._id);
+useCollaborativeTasks(setTasks);
 
 //  Join/leave list rooms + listen for list:shared updates
   useEffect(() => {

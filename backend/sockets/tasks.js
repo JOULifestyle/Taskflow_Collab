@@ -20,6 +20,7 @@ function registerTaskHandlers(io, socket) {
     if (!listId) return;
     socket.join(`list:${listId}`);
     console.log(`📌 User ${socket.userId} joined list:${listId}`);
+    console.log(`👥 Current rooms for user ${socket.userId}:`, Array.from(socket.rooms));
   });
 
   // Leave list room
