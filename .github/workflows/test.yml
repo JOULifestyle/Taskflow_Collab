@@ -31,7 +31,7 @@ jobs:
         run: npm test -- --watchAll=false
 
   # ⚙️ BACKEND TESTS
-  backend-tests:
+    backend-tests:
     runs-on: ubuntu-latest
     strategy:
       matrix:
@@ -39,6 +39,8 @@ jobs:
     defaults:
       run:
         working-directory: ./backend
+    env:
+      NODE_ENV: development   # 👈 ensures Jest gets installed
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
