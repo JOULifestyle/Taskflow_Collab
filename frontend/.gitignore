@@ -27,3 +27,5 @@ yarn-error.log*
 *.pem
 *.key
 *.crt
+localhost.pem
+localhost-key.pem
