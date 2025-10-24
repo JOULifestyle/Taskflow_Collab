@@ -21,6 +21,7 @@ export const SocketProvider = ({ children }) => {
     if (s) {
       // listen for connect event before setting
       s.on("connect", () => {
+        console.log("✅ Socket connected:", s.id);
         setSocket(s);
       });
 
