@@ -21,8 +21,10 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: ${{ matrix.node-version }}
+          cache: 'npm'
+          cache-dependency-path: ./frontend/package-lock.json
 
-      - name: Install dependencies (frontend)
+      - name: Install frontend dependencies
         working-directory: ./frontend
         run: npm ci
 
@@ -36,9 +38,6 @@ jobs:
     strategy:
       matrix:
         node-version: [18.x]
-    defaults:
-      run:
-        working-directory: ./backend
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -47,17 +46,23 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: ${{ matrix.node-version }}
+          cache: 'npm'
+          cache-dependency-path: ./backend/package-lock.json
 
-      # 🔧 Upgrade npm to support include=dev (optional but safe)
-      - name: Upgrade npm
-        run: npm install -g npm@10
-
-      # ✅ Easiest fix: use npm install (always installs dev deps)
-      - name: Install dependencies (include dev)
-        run: npm install
+      - name: Install backend dependencies (including dev)
+        working-directory: ./backend
+        run: npm ci --include=dev
 
       - name: Verify Jest installation
+        working-directory: ./backend
         run: npx jest --version
 
-      - name: Run backend tests
-        run: npm test
+      - name: Run backend tests with coverage
+        working-directory: ./backend
+        run: npx jest --runInBand --coverage
+
+      - name: Upload coverage report
+        uses: actions/upload-artifact@v3
+        with:
+          name: backend-coverage
+          path: ./backend/coverage
