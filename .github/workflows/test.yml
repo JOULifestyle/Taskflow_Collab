@@ -53,6 +53,15 @@ jobs:
         working-directory: ./backend
         run: npm ci --include=dev
 
+      - name: Debug Jest installation
+        working-directory: ./backend
+        run: |
+          echo "Checking if Jest is installed..."
+          npm list jest || echo "Jest not found in npm list"
+          ls -la node_modules/.bin/jest || echo "Jest binary not found in node_modules/.bin"
+          echo "Node version: $(node --version)"
+          echo "NPM version: $(npm --version)"
+
       - name: Verify Jest installation
         working-directory: ./backend
         run: npx jest --version
