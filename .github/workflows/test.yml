@@ -22,9 +22,6 @@ jobs:
         with:
           node-version: ${{ matrix.node-version }}
 
-      - name: Upgrade npm
-        run: npm install -g npm@10
-
       - name: Install dependencies (frontend)
         working-directory: ./frontend
         run: npm ci
@@ -51,14 +48,16 @@ jobs:
         with:
           node-version: ${{ matrix.node-version }}
 
+      # 🔧 Upgrade npm to support include=dev (optional but safe)
       - name: Upgrade npm
         run: npm install -g npm@10
 
+      # ✅ Easiest fix: use npm install (always installs dev deps)
       - name: Install dependencies (include dev)
-        run: npm ci --include=dev
+        run: npm install
 
       - name: Verify Jest installation
-        run: ./node_modules/.bin/jest --version
+        run: npx jest --version
 
       - name: Run backend tests
         run: npm test
