@@ -1,17 +1,19 @@
-import { Routes, Route, Link, useNavigate } from "react-router-dom";
+import { Routes, Route, Link } from "react-router-dom";
 import { useState, useEffect } from "react";
 import TodoPage from "./pages/TodoPage";
 import Dashboard from "./pages/Dashboard";
 import CalendarView from "./pages/CalenderView";
+import AcceptInvitePage from "./pages/AcceptInvitePage";
 import Layout from "./Layout";
 import { usePushNotifications } from "./hooks/usePushNotifications";
-import { useAuth } from "./context/AuthContext"; 
+import { useAuth } from "./context/AuthContext";
 import AuthPage from "./pages/AuthPage";
 import ProtectedRoute from "./components/ProtectedRoute";
+import UserAvatar from "./components/UserAvatar";
 
 export default function App() {
-  const { token, logout } = useAuth();
-  const navigate = useNavigate();
+  const { token } = useAuth();
+  
   usePushNotifications(token);
 
   const [dark, setDark] = useState(false);
@@ -20,7 +22,6 @@ export default function App() {
   useEffect(() => {
     if (token && "Notification" in window && Notification.permission === "default") {
       Notification.requestPermission().then((permission) => {
-        console.log("🔔 Notification permission:", permission);
       });
     }
   }, [token]);
@@ -34,7 +35,7 @@ export default function App() {
         <Link to="/dashboard">Dashboard</Link>
         <Link to="/calenderview">Calender</Link>
 
-        <div className="ml-auto flex gap-2">
+        <div className="ml-auto flex gap-2 items-center">
           <button
             onClick={() => setDark(!dark)}
             className="px-3 py-1 bg-gray-300 rounded"
@@ -43,15 +44,7 @@ export default function App() {
           </button>
 
           {token ? (
-            <button
-              onClick={() => {
-                logout();
-                navigate("/auth");
-              }}
-              className="px-3 py-1 bg-red-500 text-white rounded"
-            >
-              Logout
-            </button>
+            <UserAvatar />
           ) : (
             <Link
               to="/auth"
@@ -82,14 +75,15 @@ export default function App() {
               </ProtectedRoute>
             } 
           />
-          <Route 
-            path="/calenderview" 
+          <Route
+            path="/calenderview"
             element={
               <ProtectedRoute>
                 <CalendarView />
               </ProtectedRoute>
-            } 
+            }
           />
+          <Route path="/accept-invite" element={<AcceptInvitePage />} />
           <Route path="/auth" element={<AuthPage />} />
         </Routes>
       </main>

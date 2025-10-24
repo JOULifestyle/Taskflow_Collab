@@ -1,4 +1,4 @@
-// src/hooks/useLists.js
+
 import { useState, useEffect, useCallback } from "react";
 import { useAuth } from "../context/AuthContext";
 import { useSocket } from "../context/SocketProvider"; 
@@ -7,9 +7,9 @@ import toast from "react-hot-toast";
 const API_URL = process.env.REACT_APP_API_URL || "http://localhost:5000";
 
 export function useLists() {
-  const { user } = useAuth();          //  get user from context
-  const token = user?.token;           //  extract token safely
-  const { socket } = useSocket();      //  socket is provided by SocketProvider
+  const { user } = useAuth();          
+  const token = user?.token;          
+  const { socket } = useSocket();      
 
   const [lists, setLists] = useState([]);
   const [currentList, setCurrentList] = useState(null);
@@ -46,7 +46,7 @@ export function useLists() {
     if (!token || !socket) return;
 
     const handleShared = (data) => {
-      console.log("📢 List shared update:", data);
+      
       toast((t) => (
         <div className="flex flex-col gap-2">
           <span>
@@ -108,7 +108,7 @@ export function useLists() {
     }
   };
 
-  // inside useLists.js
+
 const deleteList = useCallback(
   async (listId) => {
     if (!listId) return;

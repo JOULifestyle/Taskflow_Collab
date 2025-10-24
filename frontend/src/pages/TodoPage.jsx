@@ -2,8 +2,8 @@ import { useState, useEffect } from "react";
 import toast, { Toaster } from "react-hot-toast";
 import { useTasks } from "../hooks/useTasks";
 import { useLists } from "../hooks/useLists";
-import { useCollaborativeTasks } from "../hooks/useCollaborativeTasks"; 
-import { useAuth } from "../context/AuthContext"; 
+import { useCollaborativeTasks } from "../hooks/useCollaborativeTasks";
+import { useAuth } from "../context/AuthContext";
 import { useSocket } from "../context/SocketProvider";
 import {
   DndContext,
@@ -21,6 +21,7 @@ import {
 import { CSS } from "@dnd-kit/utilities";
 import MembersModal from "../components/MembersModal";
 import ShareList from "../components/ShareList";
+
 
 
 const API_URL = process.env.REACT_APP_API_URL || "http://localhost:5000";
@@ -46,15 +47,19 @@ const formatDateForInput = (dateStr) => {
   const d = new Date(dateStr);
   const offset = d.getTimezoneOffset();
   const local = new Date(d.getTime() - offset * 60000); // shift to local
-  return local.toISOString().slice(0, 16); 
+  return local.toISOString().slice(0, 16);
 };
 
-function Todo()  {
+function TodoPage()  {
   const { user } = useAuth();
-  const { socket } = useSocket();  
+  const { socket } = useSocket();
   const { lists, currentList, selectList, createList, updateListName, deleteList, loading: listsLoading } = useLists();
   const { tasks, addTask, toggleTask, deleteTask, startEdit, saveEdit, setTasks } =
     useTasks(currentList?._id);
+
+  // Determine user's role for current list
+  const userRole = currentList?.members?.find(m => m.userId === user?._id)?.role || 'viewer';
+  const isViewer = userRole === 'viewer';
   const [input, setInput] = useState("");
   const [dueDate, setDueDate] = useState("");
   const [priority, setPriority] = useState("medium");
@@ -82,9 +87,8 @@ useCollaborativeTasks(setTasks);
   socket.emit("join-list", currentList._id);
 
   socket.on("list:shared", (data) => {
-    console.log("📢 List shared update:", data);
     toast.success(`User added/updated: ${data.userId} as ${data.role}`);
-    // optionally: refresh members here
+    
   });
 
   return () => {
@@ -126,12 +130,12 @@ useEffect(() => {
 }, [user]);
 
 // helper
-function urlBase64ToUint8Array(base64String) {
+const urlBase64ToUint8Array = (base64String) => {
   const padding = "=".repeat((4 - base64String.length % 4) % 4);
   const base64 = (base64String + padding).replace(/-/g, "+").replace(/_/g, "/");
   const rawData = window.atob(base64);
   return Uint8Array.from([...rawData].map((c) => c.charCodeAt(0)));
-}
+};
 
   // PWA install prompt
   const [deferredPrompt, setDeferredPrompt] = useState(null);
@@ -290,9 +294,9 @@ function urlBase64ToUint8Array(base64String) {
   const recurringTasks = filteredTasks.filter(t => t.repeat);
 const nonRecurringTasks = filteredTasks.filter(t => !t.repeat);
 
-  // --------------------
+  
   // Show Lists First
-  // --------------------
+ 
   // If no list selected → show the list catalog
 
 
@@ -301,7 +305,7 @@ if (!currentList) {
 
   const handleEdit = async (listId) => {
     if (!editValue.trim()) return;
-    await updateListName(listId, editValue); //  now comes from hook
+    await updateListName(listId, editValue); 
     setEditingId(null);
     setEditValue("");
   };
@@ -369,7 +373,7 @@ if (!currentList) {
     <button
       onClick={() => {
         if (window.confirm(`Delete list "${list.name}"?`)) {
-          deleteList(list._id); //  use from hook
+          deleteList(list._id); 
         }
       }}
       className="text-xs bg-red-500 hover:bg-red-600 text-white px-3 py-1 rounded-md transition"
@@ -412,9 +416,9 @@ if (!currentList) {
   );
 }
 
-  // --------------------
+  
   // Tasks View
-  // --------------------
+ 
 
   return (
     <>
@@ -442,14 +446,36 @@ if (!currentList) {
             {/* New buttons */}
             <div className="flex gap-2 mb-6">
               <button
-                onClick={() => setShowMembers(true)}
-                className="bg-gray-200 dark:bg-gray-700 px-3 py-1 rounded"
+                onClick={() => {
+                  if (isViewer) {
+                    alert("You are on viewer mode. You cannot manage members.");
+                    return;
+                  }
+                  setShowMembers(true);
+                }}
+                disabled={isViewer}
+                className={`px-3 py-1 rounded ${
+                  isViewer
+                    ? "bg-gray-400 text-gray-200 cursor-not-allowed"
+                    : "bg-gray-200 dark:bg-gray-700 hover:bg-gray-300 dark:hover:bg-gray-600"
+                }`}
               >
                 Manage Members
               </button>
               <button
-                onClick={() => setShowShare((prev) => !prev)}
-                className="bg-gray-200 dark:bg-gray-700 px-3 py-1 rounded"
+                onClick={() => {
+                  if (isViewer) {
+                    alert("You are on viewer mode. You cannot share the list.");
+                    return;
+                  }
+                  setShowShare((prev) => !prev);
+                }}
+                disabled={isViewer}
+                className={`px-3 py-1 rounded ${
+                  isViewer
+                    ? "bg-gray-400 text-gray-200 cursor-not-allowed"
+                    : "bg-gray-200 dark:bg-gray-700 hover:bg-gray-300 dark:hover:bg-gray-600"
+                }`}
               >
                 {showShare ? "Close Share" : "Share List"}
               </button>
@@ -518,8 +544,19 @@ if (!currentList) {
           {/* Add Task Form */}
           <div className="mb-4">
             <button
-              onClick={() => setShowForm(!showForm)}
-              className="w-full bg-blue-600 text-white px-4 py-2 rounded-md hover:bg-blue-700 active:bg-blue-800 transition-colors"
+              onClick={() => {
+                if (isViewer) {
+                  alert("You are on viewer mode. You cannot add tasks.");
+                  return;
+                }
+                setShowForm(!showForm);
+              }}
+              disabled={isViewer}
+              className={`w-full px-4 py-2 rounded-md transition-colors ${
+                isViewer
+                  ? "bg-gray-400 text-gray-200 cursor-not-allowed"
+                  : "bg-blue-600 text-white hover:bg-blue-700 active:bg-blue-800"
+              }`}
             >
               {showForm ? "Undo" : "Add Task"}
             </button>
@@ -570,6 +607,10 @@ if (!currentList) {
 
                 <button
                   onClick={() => {
+                    if (isViewer) {
+                      alert("You are on viewer mode. You cannot add tasks.");
+                      return;
+                    }
                     addTask(input, dueDate, priority, category, repeat);
                     setInput("");
                     setDueDate("");
@@ -578,7 +619,12 @@ if (!currentList) {
                     setRepeat("");
                     setShowForm(false);
                   }}
-                  className="bg-green-600 text-white px-4 py-2 rounded-md hover:bg-green-700 active:bg-green-800 transition-colors"
+                  disabled={isViewer}
+                  className={`px-4 py-2 rounded-md transition-colors ${
+                    isViewer
+                      ? "bg-gray-400 text-gray-200 cursor-not-allowed"
+                      : "bg-green-600 text-white hover:bg-green-700 active:bg-green-800"
+                  }`}
                 >
                   Add
                 </button>
@@ -617,6 +663,7 @@ if (!currentList) {
         getDueDateColor={getDueDateColor}
         getPriorityColor={getPriorityColor}
         stopEdit={stopEdit}
+        isViewer={isViewer}
       />
     ))}
   </ul>
@@ -645,6 +692,7 @@ if (!currentList) {
         getDueDateColor={getDueDateColor}
         getPriorityColor={getPriorityColor}
         stopEdit={stopEdit}
+        isViewer={isViewer}
       />
     ))}
   </ul>
@@ -662,7 +710,7 @@ if (!currentList) {
 }
 
 /* Sortable Task Item */
-function SortableTask({ id, task, toggleTask, deleteTask, startEdit, onSave, getDueDateColor, getPriorityColor, stopEdit }) {
+function SortableTask({ id, task, toggleTask, deleteTask, startEdit, onSave, getDueDateColor, getPriorityColor, stopEdit, isViewer }) {
   const { attributes, listeners, setNodeRef, transform, transition } = useSortable({ id });
   const style = { transform: CSS.Transform.toString(transform), transition };
 
@@ -686,7 +734,18 @@ function SortableTask({ id, task, toggleTask, deleteTask, startEdit, onSave, get
         <>
           <div className="flex items-start gap-3 w-full">
             <span {...listeners} className="cursor-grab text-gray-500 hover:text-gray-800" title="Drag">⠿</span>
-            <input type="checkbox" checked={task.completed} onChange={() => toggleTask(task._id)} />
+            <input
+              type="checkbox"
+              checked={task.completed}
+              onChange={() => {
+                if (isViewer) {
+                  alert("You are on viewer mode. You cannot toggle tasks.");
+                  return;
+                }
+                toggleTask(task._id);
+              }}
+              disabled={isViewer}
+            />
             <div>
               <p className={`${task.completed ? "line-through text-gray-400" : ""} font-medium`}>{task.text}</p>
               {task.due && <p className={`text-sm ${getDueDateColor(task.due)}`}>Due: {formatDueDate(task.due)}</p>}
@@ -706,8 +765,32 @@ function SortableTask({ id, task, toggleTask, deleteTask, startEdit, onSave, get
           </div>
 
           <div className="flex gap-2 mt-2 sm:mt-0">
-            <button onClick={() => startEdit(task._id)} className="text-blue-500 hover:underline text-sm">Edit</button>
-            <button onClick={() => deleteTask(task._id)} className="text-red-500 hover:underline text-sm">Delete</button>
+            <button
+              onClick={() => {
+                if (isViewer) {
+                  alert("You are on viewer mode. You cannot edit tasks.");
+                  return;
+                }
+                startEdit(task._id);
+              }}
+              disabled={isViewer}
+              className={`text-sm ${isViewer ? "text-gray-400 cursor-not-allowed" : "text-blue-500 hover:underline"}`}
+            >
+              Edit
+            </button>
+            <button
+              onClick={() => {
+                if (isViewer) {
+                  alert("You are on viewer mode. You cannot delete tasks.");
+                  return;
+                }
+                deleteTask(task._id);
+              }}
+              disabled={isViewer}
+              className={`text-sm ${isViewer ? "text-gray-400 cursor-not-allowed" : "text-red-500 hover:underline"}`}
+            >
+              Delete
+            </button>
           </div>
         </>
       )}
@@ -791,4 +874,4 @@ function EditTask({ task, onSave, onCancel }) {
   );
 }
 
-export default Todo;
+export default TodoPage;

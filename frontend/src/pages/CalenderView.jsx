@@ -4,7 +4,7 @@ import "react-calendar/dist/Calendar.css";
 import { useTasks } from "../hooks/useTasks";
 
 export default function CalendarView() {
-  const { tasks } = useTasks();
+  const { tasks } = useTasks(null); // Pass null to get all tasks across lists
   const [selectedDate, setSelectedDate] = useState(new Date());
 
   const tasksForDay = tasks.filter((t) => {

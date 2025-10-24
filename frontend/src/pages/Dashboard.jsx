@@ -14,7 +14,7 @@ import {
 } from "recharts";
 
 export default function Dashboard() {
-  const { tasks } = useTasks();
+  const { tasks } = useTasks(null); // Pass null to get all tasks across lists
 
   const completedCount = tasks.filter((t) => t.completed).length;
   const pendingCount = tasks.length - completedCount;

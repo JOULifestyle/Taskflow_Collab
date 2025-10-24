@@ -18,22 +18,26 @@ export const SocketProvider = ({ children }) => {
     // create the socket instance
     const s = createSocket(user.token);
 
-    // listen for connect event before setting
-    s.on("connect", () => {
-      console.log("✅ Socket connected:", s.id);
-      setSocket(s);
-    });
+    if (s) {
+      // listen for connect event before setting
+      s.on("connect", () => {
+        setSocket(s);
+      });
 
-    s.on("connect_error", (err) => {
-      console.error("❌ Socket connection error:", err.message);
-    });
+      s.on("connect_error", (err) => {
+        console.error("❌ Socket connection error:", err.message);
+      });
 
-    // cleanup only this socket
-    return () => {
-      if (s) {
-        s.disconnect();
-      }
-    };
+      // cleanup only this socket
+      return () => {
+        if (s) {
+          s.disconnect();
+        }
+      };
+    } else {
+      console.error("❌ Failed to create socket");
+      setSocket(null);
+    }
   }, [user?.token]);
 
   return (

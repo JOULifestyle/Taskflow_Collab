@@ -34,7 +34,7 @@ function mergeTasks(apiTasks, localTasks) {
       merged.push(local);
     }
   }
-  // Add any missing API tasks
+  
   for (const api of apiTasks) {
     if (!merged.find((m) => m._id === api._id)) {
       merged.push(api);
@@ -46,8 +46,8 @@ function mergeTasks(apiTasks, localTasks) {
 }
 export function useTasks(listId) {
   const { user } = useAuth();
-  const { socket } = useSocket(); 
-  const token = user?.token; 
+  const { socket } = useSocket();
+  const token = user?.token;
   const [tasks, setTasks] = useState([]);
   const tasksRef = useRef(tasks);
   const [queue, setQueue] = useState([]);
@@ -62,10 +62,10 @@ export function useTasks(listId) {
     if (!socket) return;
 
     const handleUpdated = (updatedTask) => {
-      console.log("📢 Got task:updated from server:", updatedTask);
-      if (updatedTask.listId !== listId) return; // only update if same list
+     
+      if (listId && updatedTask.listId !== listId) return; // only update if same list (or all lists if no listId)
 
-      setTasks((prev) => 
+      setTasks((prev) =>
         prev.map((t) =>
       t._id === updatedTask._id ? { ...t, ...updatedTask } : t
     )
@@ -102,26 +102,45 @@ export function useTasks(listId) {
 
   // Fetch tasks from API when token or listId changes
   useEffect(() => {
-    if (!token || !listId) return;
+    if (!token) return;
 
     const fetchTasks = async () => {
       setLoading(true);
       try {
-        const res = await fetch(`${API_URL}/lists/${listId}/tasks`, {
-          headers: { Authorization: `Bearer ${token}` },
-          cache: "no-store",
-        });
-        if (!res.ok) throw new Error("Failed to fetch tasks");
+        let data = [];
 
-        const data = await res.json();
+        if (listId) {
+          // Fetch tasks for specific list
+          const res = await fetch(`${API_URL}/lists/${listId}/tasks`, {
+            headers: { Authorization: `Bearer ${token}` },
+            cache: "no-store",
+          });
+          if (!res.ok) throw new Error("Failed to fetch tasks");
+          data = await res.json();
+        } else {
+          // Fetch all tasks across all lists
+          const res = await fetch(`${API_URL}/tasks/all`, {
+            headers: { Authorization: `Bearer ${token}` },
+            cache: "no-store",
+          });
+          if (!res.ok) throw new Error("Failed to fetch all tasks");
+          data = await res.json();
+        }
+
         const normalized = normalizeTasks(data);
 
-        const saved = localStorage.getItem(`tasks-${listId}`);
-        const local = saved ? normalizeTasks(JSON.parse(saved)) : [];
-        const merged = mergeTasks(normalized, local);
+        if (listId) {
+          // For specific list, merge with local storage
+          const saved = localStorage.getItem(`tasks-${listId}`);
+          const local = saved ? normalizeTasks(JSON.parse(saved)) : [];
+          const merged = mergeTasks(normalized, local);
 
-        setTasks(merged);
-        localStorage.setItem(`tasks-${listId}`, JSON.stringify(merged));
+          setTasks(merged);
+          localStorage.setItem(`tasks-${listId}`, JSON.stringify(merged));
+        } else {
+          // For all tasks, just set them directly
+          setTasks(normalized);
+        }
       } catch (err) {
         console.error("Error fetching tasks:", err);
       } finally {
@@ -174,9 +193,9 @@ const merged = mergeTasks(normalized, local);
     localStorage.setItem(`tasks-${listId}`, JSON.stringify(normalizeTasks(tasks)));
   }, [tasks, listId]);
 
-  // -------------------
+  
   // CRUD
-  // -------------------
+  
    const addTask = useCallback(
     async (text, due, priority, category, repeat = null) => {
       if (!text?.trim() || !listId) return;
@@ -418,9 +437,9 @@ setTasks((prev) =>
     [token, listId]
   );
 
-  // -------------------
+
   // Reorder Functions
-  // -------------------
+  
   const reorderRecurring = useCallback(
     async (startIndex, endIndex) => {
       const recurring = tasksRef.current.filter((t) => t.repeat);
@@ -539,9 +558,9 @@ setTasks((prev) =>
     [token, listId]
   );
 
-  // -------------------
+  
   // Editing Helpers
-  // -------------------
+  
   const startEdit = useCallback((id) => {
     setTasks((prev) => prev.map((t) => (t._id === id ? { ...t, editing: true } : t)));
   }, []);
@@ -550,9 +569,9 @@ setTasks((prev) =>
     setTasks((prev) => prev.map((t) => ({ ...t, editing: false })));
   }, []);
 
-  // -------------------
+  
   // Queue Sync
-  // -------------------
+  
   useEffect(() => {
     if (!queue.length || !listId) return;
     let cancelled = false;

@@ -8,7 +8,7 @@ export default function AuthForm() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [mode, setMode] = useState("login");
-  const navigate = useNavigate();  //  hook
+  const navigate = useNavigate(); 
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -17,12 +17,12 @@ export default function AuthForm() {
       if (mode === "login") {
         success = await login(email, password);
       } else {
-        success = await signup(email, password);
+        success = await signup(email, email, password);
       }
 
       if (success) {
         toast.success(`${mode} successful`);
-        navigate("/");   //  go to main page
+        navigate("/");   
       }
     } catch (err) {
       toast.error(err.message || "Auth failed");

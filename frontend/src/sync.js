@@ -26,13 +26,13 @@ export async function syncTasks(token) {
           method: "DELETE",
           headers: { Authorization: `Bearer ${token}` }
         });
-        // skip pushing deleted task to updated list (removes it)
+        
       } else {
-        updated.push(task); // already synced
+        updated.push(task); 
       }
     } catch (err) {
       console.error("Sync failed for task", task, err);
-      updated.push(task); // keep task as it is if sync failed
+      updated.push(task); 
     }
   }
 

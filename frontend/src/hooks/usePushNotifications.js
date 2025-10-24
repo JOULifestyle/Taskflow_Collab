@@ -21,20 +21,27 @@ function urlBase64ToUint8Array(base64String) {
 
 export function usePushNotifications(token) {
   useEffect(() => {
-    if (!token || !("serviceWorker" in navigator) || !("PushManager" in window)) return;
+    
+    if (!token || !("serviceWorker" in navigator) || !("PushManager" in window)) {
+      
+      return;
+    }
 
-    // 🔍 Log browser information for debugging
-    console.log("🖥️ Browser detection:", {
-      userAgent: navigator.userAgent,
-      isEdge: /Edg\//.test(navigator.userAgent),
-      isChrome: /Chrome/.test(navigator.userAgent) && !/Edg\//.test(navigator.userAgent),
-      platform: navigator.platform
-    });
+    //  Browser detection variables - order matters for proper detection
+    const isEdge = /Edg\//.test(navigator.userAgent);
+    const isChrome = /Chrome/.test(navigator.userAgent) && !/Edg\//.test(navigator.userAgent);
+    const isFirefox = /Firefox/.test(navigator.userAgent);
+    const isSafari = /Safari/.test(navigator.userAgent) && !/Chrome/.test(navigator.userAgent) && !/Edg\//.test(navigator.userAgent);
+
+    
+    if (isEdge) {
+    }
+
 
     async function waitForActiveSW() {
       const reg = await navigator.serviceWorker.ready;
 
-      // 🕐 Ensure it's actually active (some browsers delay activation)
+    
       if (reg.active?.state !== "activated") {
         await new Promise((resolve) => {
           reg.active.addEventListener("statechange", (e) => {
@@ -47,42 +54,101 @@ export function usePushNotifications(token) {
 
     async function subscribe() {
   try {
+    
     const reg = await waitForActiveSW();
 
-    // ✅ Re-request permission if not granted
+    // Re-request permission if not granted
     const permission = await Notification.requestPermission();
     if (permission !== "granted") {
       console.warn("Push permission denied");
       return;
     }
 
-    //  Force-clear any existing subscription
+    //  Check for existing subscription and avoid duplicates
     const oldSub = await reg.pushManager.getSubscription();
     if (oldSub) {
-      const endpoint = oldSub.endpoint || "";
-      console.log("Old subscription endpoint:", endpoint);
+      
+      
+
+      // Check if subscription is already registered in backend
+      try {
+        const response = await fetch(`${API_URL}/subscriptions/stats`, {
+          headers: { Authorization: `Bearer ${token}` },
+        });
+        if (response.ok) {
+          const stats = await response.json();
+          const totalSubs = stats.total || 0;
+          
+
+          // If we have subscriptions, skip creating new one
+          if (totalSubs > 0) {
+            
+            return;
+          }
+        }
+      } catch (err) {
+        console.warn("⚠️ Could not check existing subscriptions:", err);
+      }
+
+      // Only unsubscribe if we're going to create a new one
       await oldSub.unsubscribe();
-      console.log("🗑️ Old subscription removed (force refresh)");
+      
+    } else {
+    
     }
 
-    //  Use VAPID keys for all browsers to ensure FCM compatibility
-    // Microsoft Edge supports FCM but may default to WNS without VAPID
-    console.log("🔑 Using VAPID keys for FCM across all browsers");
+    
     const convertedVapidKey = urlBase64ToUint8Array(VAPID_KEY);
-    const sub = await reg.pushManager.subscribe({
+
+    // Browser-specific subscription options for maximum compatibility
+    const subscriptionOptions = {
       userVisibleOnly: true,
       applicationServerKey: convertedVapidKey,
-    });
+    };
+
+    // Browser-specific options
+    if (isEdge && !isChrome) {
+      
+    }
+
+    if (isFirefox) {
+    }
+
+    if (isSafari) {
+    }
+
+    let sub;
+    try {
+      sub = await reg.pushManager.subscribe(subscriptionOptions);
+      if (isEdge);
+    } catch (subscriptionError) {
+      console.error("❌ Subscription failed:", subscriptionError);
+      if (isEdge)
+
+      // Fallback: try without VAPID for browsers that might not support it
+      if (isSafari || subscriptionError.name === 'NotSupportedError' || (isEdge && subscriptionError.name === 'InvalidStateError')) {
+        
+        if (isEdge)
+        try {
+          sub = await reg.pushManager.subscribe({
+            userVisibleOnly: true,
+            // No applicationServerKey for fallback
+          });
+        
+          if (isEdge);
+        } catch (fallbackError) {
+          console.error("❌ Fallback subscription also failed:", fallbackError);
+          if (isEdge)
+          throw fallbackError;
+        }
+      } else {
+        throw subscriptionError;
+      }
+    }
 
     const plainSub = sub.toJSON();
-    console.log("🚀 Subscribed with endpoint:", plainSub.endpoint);
-    console.log("🔍 Full subscription details:", plainSub);
 
-    // 🔍 Check if endpoint indicates FCM or WNS
-    const isFCM = plainSub.endpoint.includes('fcm.googleapis.com');
-    const isWNS = plainSub.endpoint.includes('notify.windows.com');
-    console.log("📡 Push service detected:", { isFCM, isWNS, endpoint: plainSub.endpoint });
-
+   
     await fetch(`${API_URL}/subscriptions`, {
       method: "POST",
       headers: {
@@ -92,13 +158,13 @@ export function usePushNotifications(token) {
       body: JSON.stringify({ subscription: plainSub }),
     });
 
-    console.log("✅ Push subscription registered successfully");
+    
   } catch (err) {
-    console.error("Push subscribe error:", err);
+    console.error("❌ Push subscribe error:", err);
   }
 }
 
-
+   
     subscribe();
   }, [token]);
 }

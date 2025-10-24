@@ -30,7 +30,7 @@ export default function MembersModal({ list, token, onClose, currentUser }) {
       .finally(() => setLoading(false));
   }, [list, token]);
 
-  // ---  Listen to socket events ---
+  //Listen to socket events
   useEffect(() => {
     if (!list?._id) return;
 

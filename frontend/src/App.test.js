@@ -1,8 +1,12 @@
-import { render, screen } from '@testing-library/react';
-import App from './App';
+jest.mock("react-calendar");
+jest.mock("get-user-locale");
 
-test('renders learn react link', () => {
-  render(<App />);
-  const linkElement = screen.getByText(/learn react/i);
-  expect(linkElement).toBeInTheDocument();
+
+import { render } from "@testing-library/react";
+import App from "./App";
+import { AllProviders } from "../test-utils";
+
+test("renders app without crashing", () => {
+  render(<App />, { wrapper: AllProviders });
+  expect(document.body).toBeInTheDocument();
 });

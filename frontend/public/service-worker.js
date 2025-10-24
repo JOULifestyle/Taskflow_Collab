@@ -1,4 +1,4 @@
-const CACHE_NAME = "todo-app-cache-v2"; // bump version when deploying
+const CACHE_NAME = "todo-app-cache-v2"; 
 const ASSETS_TO_CACHE = [
   "/",
   "/index.html",
@@ -10,13 +10,13 @@ const ASSETS_TO_CACHE = [
   "/static/css/main.css",
 ];
 
-// Install event: cache app assets & activate immediately
+
 self.addEventListener("install", (event) => {
-  console.log("📥 Service Worker installing...");
-  self.skipWaiting(); // 🚀 activate new worker right away
+  
+  self.skipWaiting(); 
   event.waitUntil(
     caches.open(CACHE_NAME).then((cache) => {
-      console.log("📦 Caching static assets...");
+      
       return cache.addAll(ASSETS_TO_CACHE);
     })
   );
@@ -24,20 +24,20 @@ self.addEventListener("install", (event) => {
 
 // Activate event: clean old caches and claim clients
 self.addEventListener("activate", (event) => {
-  console.log("⚡ Activating new service worker...");
+  
   event.waitUntil(
     caches.keys().then((keys) =>
       Promise.all(
         keys.map((key) => {
           if (key !== CACHE_NAME) {
-            console.log("🧹 Removing old cache:", key);
+          
             return caches.delete(key);
           }
         })
       )
     )
   );
-  return self.clients.claim(); // 🔄 take control of all open clients
+  return self.clients.claim(); 
 });
 
 // Fetch event: cache-first for static assets, bypass /api calls
@@ -66,13 +66,15 @@ self.addEventListener("fetch", (event) => {
 
 // Push notifications
 self.addEventListener("push", (event) => {
-  console.log("📬 Push received:", event);
+
 
   let data = {};
   if (event.data) {
     try {
       data = event.data.json();
-    } catch {
+      
+    } catch (err) {
+      
       data = { title: "Notification", body: event.data.text() };
     }
   }
@@ -80,33 +82,94 @@ self.addEventListener("push", (event) => {
   const title = data.title || "New Notification";
   const body = data.body || "You have a new task update";
 
-  const options = {
+  // Browser-specific notification options
+  const isChrome = /Chrome/.test(navigator.userAgent) && !/Edg\//.test(navigator.userAgent);
+  const isFirefox = /Firefox/.test(navigator.userAgent);
+  const isEdge = /Edg\//.test(navigator.userAgent);
+  const isSafari = /Safari/.test(navigator.userAgent) && !/Chrome/.test(navigator.userAgent);
+
+
+
+  const baseOptions = {
     body,
     icon: "/logo192.png",
     badge: "/logo192.png",
-    vibrate: [200, 100, 200],
-    sound: "default", // ✅ Enables sound in Edge (and supported browsers)
     data: {
       url: data.url || "/", // open this page on click
     },
   };
 
-  event.waitUntil(self.registration.showNotification(title, options));
+  // Browser-specific features
+  if (isChrome || isEdge) {
+    
+    baseOptions.vibrate = [200, 100, 200];
+    if ('sound' in Notification.prototype) {
+      baseOptions.sound = "default";
+    }
+  }
+
+  if (isFirefox) {
+    
+    baseOptions.vibrate = [200, 100, 200];
+  }
+
+  if (isSafari) {
+    delete baseOptions.badge;
+    delete baseOptions.vibrate;
+  }
+
+  
+
+  event.waitUntil(
+    self.registration.showNotification(title, baseOptions)
+      .then(() => {
+        console.log("✅ Notification displayed successfully");
+      })
+      .catch((err) => {
+        console.error("❌ Failed to display notification:", err);
+      })
+  );
 });
 
 // Notification click
 self.addEventListener("notificationclick", (event) => {
+
   event.notification.close();
+
+  const data = event.notification.data || {};
+  let targetUrl = data.url || "/";
+
+  // Handle different actions
+  if (event.action === "view") {
+    // Open the app, potentially with specific task/list context
+    if (data.taskId) {
+      targetUrl = `/?task=${data.taskId}`;
+    } else if (data.listId) {
+      targetUrl = `/?list=${data.listId}`;
+    }
+  } else if (event.action === "snooze") {
+    
+    // For now, it just open the app
+  }
 
   event.waitUntil(
     clients.matchAll({ type: "window", includeUncontrolled: true }).then((clientList) => {
+      // Check if we already have a window open
       for (const client of clientList) {
         if (client.url.includes(self.origin) && "focus" in client) {
+          console.log("🔄 Focusing existing window");
+          // Navigate to the target URL in the existing window
+          if (targetUrl !== "/" && client.url !== self.origin + targetUrl) {
+            client.navigate(self.origin + targetUrl);
+          }
           return client.focus();
         }
       }
+
+      // No existing window, open a new one
+      
       if (clients.openWindow) {
-        return clients.openWindow("/");
+        return clients.openWindow(targetUrl);
       }
     })
   );

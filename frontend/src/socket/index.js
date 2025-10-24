@@ -16,20 +16,20 @@ export function createSocket(token) {
     reconnectionDelay: 1000,
   });
 
-  // --- Connection lifecycle ---
+  //  Connection lifecycle 
   socket.on("connect", () => {
-    console.log("🔌 Connected to Socket.IO server:", socket.id);
+   
   });
 
   socket.on("disconnect", (reason) => {
-    console.log("❌ Disconnected from Socket.IO server:", reason);
+    
   });
 
   socket.on("connect_error", (err) => {
-    console.error("⚠️ Socket connection error:", err.message);
+    
   });
 
-  // --- Global error handler from server ---
+  //  Global error handler from server 
   socket.on("error", (err) => {
     console.error("🚨 Socket error event:", err);
   });
@@ -38,7 +38,7 @@ export function createSocket(token) {
 }
 
 export function getSocket() {
-  return socket;
+  return socket || null;
 }
 
 export function disconnectSocket() {
@@ -48,7 +48,7 @@ export function disconnectSocket() {
   }
 }
 
-// --- Helper: subscribe/unsubscribe to a list room ---
+//  Helper: subscribe/unsubscribe to a list room 
 export function joinList(listId) {
   if (socket && listId) {
     socket.emit("join-list", listId);
@@ -61,26 +61,24 @@ export function leaveList(listId) {
   }
 }
 
-// --- NEW: listen for member updates/removals ---
+// NEW: listen for member updates/removals 
 export function onMemberEvents({ onShared, onRemoved }) {
   if (!socket) return;
 
   if (onShared) {
     socket.on("list:shared", ({ listId, userId, role }) => {
-      console.log("📡 list:shared", { listId, userId, role });
       onShared({ listId, userId, role });
     });
   }
 
   if (onRemoved) {
     socket.on("list:memberRemoved", ({ listId, userId }) => {
-      console.log("📡 list:memberRemoved", { listId, userId });
       onRemoved({ listId, userId });
     });
   }
 }
 
-// --- helper to cleanup listeners when leaving modal/page ---
+//  helper to cleanup listeners when leaving modal/page 
 export function offMemberEvents() {
   if (!socket) return;
   socket.off("list:shared");

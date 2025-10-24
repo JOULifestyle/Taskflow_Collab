@@ -23,7 +23,7 @@ function registerValidSW(swUrl, config) {
   navigator.serviceWorker
     .register(swUrl)
     .then((registration) => {
-      console.log('Service worker registered:', registration);
+      
 
       registration.onupdatefound = () => {
         const installingWorker = registration.installing;
@@ -31,9 +31,9 @@ function registerValidSW(swUrl, config) {
           installingWorker.onstatechange = () => {
             if (installingWorker.state === 'installed') {
               if (navigator.serviceWorker.controller) {
-                console.log('New content is available; please refresh.');
+               
               } else {
-                console.log('Content cached for offline use.');
+                
               }
             }
           };

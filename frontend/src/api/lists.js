@@ -10,11 +10,11 @@ export async function getListMembers(listId, token) {
   return res.data;
 }
 
-// Share a list with a user
-export async function shareList(listId, { userId, role }, token) {
+// Share a list with a user (by userId or email)
+export async function shareList(listId, { userId, email, role }, token) {
   const res = await axios.post(
     `${API_URL}/lists/${listId}/share`,
-    { userId, role },
+    { userId, email, role },
     { headers: { Authorization: `Bearer ${token}` } }
   );
   return res.data;
