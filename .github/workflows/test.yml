@@ -31,7 +31,7 @@ jobs:
         run: npm test -- --watchAll=false
 
   # ⚙️ BACKEND TESTS
-    backend-tests:
+  backend-tests:
     runs-on: ubuntu-latest
     strategy:
       matrix:
