@@ -2,7 +2,7 @@ import { formatDueDate, formatDateForInput, urlBase64ToUint8Array } from '../uti
 
 // Mock Intl.DateTimeFormat for consistent testing
 const mockDateTimeFormat = jest.fn();
-mockDateTimeFormat.mockReturnValue('12/25/2023, 10:30:00 AM');
+mockDateTimeFormat.mockReturnValue('12/25/2023, 11:30:00 AM');
 
 global.Intl = {
   DateTimeFormat: jest.fn(() => ({
