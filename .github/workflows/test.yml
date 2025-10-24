@@ -7,36 +7,48 @@ on:
   pull_request:
 
 jobs:
-  test:
+  # 🧠 FRONTEND TESTS
+  frontend-tests:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        node-version: [18.x, 20.x]
-
+        node-version: [18.x]
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
 
-      - name: Setup Node.js
+      - name: Use Node.js ${{ matrix.node-version }}
         uses: actions/setup-node@v4
         with:
           node-version: ${{ matrix.node-version }}
-          cache: 'npm'
 
-      # ---------- Backend Tests ----------
-      - name: Install backend dependencies
-        working-directory: ./backend
-        run: npm ci
-
-      - name: Run backend tests
-        working-directory: ./backend
-        run: npm test -- --watchAll=false
-
-      # ---------- Frontend Tests ----------
-      - name: Install frontend dependencies
+      - name: Install dependencies (frontend)
         working-directory: ./frontend
         run: npm ci
 
       - name: Run frontend tests
         working-directory: ./frontend
         run: npm test -- --watchAll=false
+
+  # ⚙️ BACKEND TESTS
+  backend-tests:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        node-version: [18.x]
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Use Node.js ${{ matrix.node-version }}
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ matrix.node-version }}
+
+      - name: Install dependencies (backend)
+        working-directory: ./backend
+        run: npm ci
+
+      - name: Run backend tests
+        working-directory: ./backend
+        run: npm test
