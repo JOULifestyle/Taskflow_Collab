@@ -30,7 +30,7 @@ jobs:
         working-directory: ./frontend
         run: npm test -- --watchAll=false
 
-   # ⚙️ BACKEND TESTS
+  # ⚙️ BACKEND TESTS
   backend-tests:
     runs-on: ubuntu-latest
     strategy:
