@@ -32,29 +32,27 @@ jobs:
 
   # ⚙️ BACKEND TESTS
   backend-tests:
-    runs-on: ubuntu-latest
-    strategy:
-      matrix:
-        node-version: [18.x]
-    defaults:
-      run:
-        working-directory: ./backend
-    env:
-      NODE_ENV: development   # 👈 ensures Jest gets installed
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
+  runs-on: ubuntu-latest
+  strategy:
+    matrix:
+      node-version: [18.x]
+  defaults:
+    run:
+      working-directory: ./backend
+  steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
 
-      - name: Use Node.js ${{ matrix.node-version }}
-        uses: actions/setup-node@v4
-        with:
-          node-version: ${{ matrix.node-version }}
+    - name: Use Node.js ${{ matrix.node-version }}
+      uses: actions/setup-node@v4
+      with:
+        node-version: ${{ matrix.node-version }}
 
-      - name: Install dependencies
-        run: npm install
+    - name: Install dependencies (include dev)
+      run: npm ci --include=dev  
 
-      - name: Verify Jest installation
-        run: npx jest --version
+    - name: Verify Jest installation
+      run: npx jest --version
 
-      - name: Run backend tests
-        run: npm test
+    - name: Run backend tests
+      run: npm test
