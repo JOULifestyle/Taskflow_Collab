@@ -22,6 +22,9 @@ jobs:
         with:
           node-version: ${{ matrix.node-version }}
 
+      - name: Upgrade npm
+        run: npm install -g npm@10
+
       - name: Install dependencies (frontend)
         working-directory: ./frontend
         run: npm ci
@@ -48,11 +51,14 @@ jobs:
         with:
           node-version: ${{ matrix.node-version }}
 
+      - name: Upgrade npm
+        run: npm install -g npm@10
+
       - name: Install dependencies (include dev)
-        run: npm ci --include=dev  
+        run: npm ci --include=dev
 
       - name: Verify Jest installation
-        run: npx jest --version
+        run: ./node_modules/.bin/jest --version
 
       - name: Run backend tests
         run: npm test
