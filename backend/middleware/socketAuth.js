@@ -1,4 +1,4 @@
-// backend/middleware/socketAuth.js
+
 const jwt = require("jsonwebtoken");
 
 function authSocket(socket, next) {
@@ -8,7 +8,7 @@ function authSocket(socket, next) {
       return next(new Error("Authentication error: Token required"));
     }
 
-    // Verify JWT (same secret as your REST auth)
+    
     const decoded = jwt.verify(token, process.env.JWT_SECRET);
 
     // Attach user info to socket for later use

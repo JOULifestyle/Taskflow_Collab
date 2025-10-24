@@ -1,19 +1,18 @@
 const List = require("../models/List");
 
 function registerListHandlers(io, socket) {
-  console.log("✅ List handlers registered for:", socket.userId);
-
+  
   socket.on("list:join", (listId) => {
     socket.join(`list:${listId}`);
-    console.log(`📌 User ${socket.userId} joined list:${listId}`);
+   
   });
 
   socket.on("list:leave", (listId) => {
     socket.leave(`list:${listId}`);
-    console.log(`📌 User ${socket.userId} left list:${listId}`);
+    
   });
 
-  // broadcast when list is updated (e.g., renaming, sharing)
+  // broadcast when list is updated 
   socket.on("list:update", async ({ listId, updates }) => {
     try {
       const list = await List.findByIdAndUpdate(listId, updates, { new: true });
@@ -24,7 +23,7 @@ function registerListHandlers(io, socket) {
     }
   });
 
-  // sharing event (owner adds member)
+  // sharing event 
   socket.on("list:share", async ({ listId, userId, role }) => {
     try {
       const list = await List.findById(listId);

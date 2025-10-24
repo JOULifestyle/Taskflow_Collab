@@ -8,7 +8,10 @@ const SubscriptionSchema = new mongoose.Schema({
       p256dh: { type: String, required: true },
       auth: { type: String, required: true }
     }
-  }
+  },
+  browserType: { type: String, enum: ['Chrome/Edge/Firefox', 'Edge (WNS)', 'Safari', 'Unknown'], default: 'Unknown' },
+  lastUpdated: { type: Date, default: Date.now },
+  createdAt: { type: Date, default: Date.now }
 });
 
 //  Prevent duplicate subscriptions for the same user + endpoint

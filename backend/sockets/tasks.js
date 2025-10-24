@@ -13,21 +13,20 @@ async function userHasRole(userId, listId, role = "editor") {
 }
 
 function registerTaskHandlers(io, socket) {
-  console.log("✅ Task handlers registered for:", socket.userId);
+ 
 
   // Join list room
   socket.on("join-list", (listId) => {
     if (!listId) return;
     socket.join(`list:${listId}`);
-    console.log(`📌 User ${socket.userId} joined list:${listId}`);
-    console.log(`👥 Current rooms for user ${socket.userId}:`, Array.from(socket.rooms));
+   
   });
 
   // Leave list room
   socket.on("leave-list", (listId) => {
     if (!listId) return;
     socket.leave(`list:${listId}`);
-    console.log(`📌 User ${socket.userId} left list:${listId}`);
+    
   });
 
   // Create task

@@ -10,7 +10,6 @@ async function fixTaskOrder() {
       useNewUrlParser: true,
       useUnifiedTopology: true,
     });
-    console.log("Connected to MongoDB");
 
     const users = await Task.distinct("userId");
 
@@ -20,10 +19,8 @@ async function fixTaskOrder() {
         tasks[i].order = i;
         await tasks[i].save();
       }
-      console.log(`Fixed order for user ${userId}`);
     }
 
-    console.log("All task orders fixed!");
     process.exit(0);
   } catch (err) {
     console.error("Error fixing task order:", err);

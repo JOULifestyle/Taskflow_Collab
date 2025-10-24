@@ -6,20 +6,20 @@ const router = express.Router();
 // Signup
 router.post("/signup", async (req, res) => {
   try {
-    const { username, password } = req.body;
-    const user = new User({ username, password });
+    const { username, email, password } = req.body;
+    const user = new User({ username, email: email || username, password });
     await user.save();
     const token = jwt.sign({ id: user._id }, process.env.JWT_SECRET, { expiresIn: "7d" });
     res.json({ token, username: user.username });
   } catch (err) {
-    res.status(400).json({ error: "Username already exists" });
+    res.status(400).json({ error: "Username or email already exists" });
   }
 });
 
 // Login
 router.post("/login", async (req, res) => {
   const { username, password } = req.body;
-  const user = await User.findOne({ username });
+  const user = await User.findOne({ $or: [{ username }, { email: username }] });
   if (!user) return res.status(400).json({ error: "User not found" });
 
   const isMatch = await user.comparePassword(password);

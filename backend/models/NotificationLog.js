@@ -10,7 +10,7 @@ const notificationLogSchema = new mongoose.Schema({
 notificationLogSchema.index({ taskId: 1, due: 1, stage: 1 }, { unique: true });
 
 
-// TTL: delete logs automatically 2 days (172800 seconds) after sentAt
+// TTL: delete logs automatically 2 days after sentAt
 notificationLogSchema.index({ sentAt: 1 }, { expireAfterSeconds: 172800 });
 
 module.exports = mongoose.model("NotificationLog", notificationLogSchema);

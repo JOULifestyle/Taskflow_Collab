@@ -9,7 +9,7 @@ function authorizeList(requiredRole = "editor") {
       const list = await List.findById(listId);
       if (!list) return res.status(404).json({ error: "List not found" });
 
-      // Owner has all permissions
+      
       if (String(list.owner) === String(req.user.id)) {
         req.list = list;
         return next();

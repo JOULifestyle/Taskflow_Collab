@@ -34,6 +34,8 @@ coverage
 
 # Cache
 .cache
+.cache/
+
 .next
 out
 .tmp
