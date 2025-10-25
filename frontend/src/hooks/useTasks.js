@@ -15,35 +15,7 @@ const normalizeTasks = (raw = []) =>
     text: t?.text ?? "",
   }));
 
- // Merge temp + real tasks
-function mergeTasks(apiTasks, localTasks) {
-  const merged = [];
-
-  for (const local of localTasks) {
-    if (local._id.startsWith("temp-")) {
-      // Try to match real task by fields
-      const match = apiTasks.find(
-        (t) =>
-          t.text === local.text &&
-          String(t.due) === String(local.due) &&
-          t.priority === local.priority &&
-          t.category === local.category
-      );
-      merged.push(match || local);
-    } else {
-      merged.push(local);
-    }
-  }
-  
-  for (const api of apiTasks) {
-    if (!merged.find((m) => m._id === api._id)) {
-      merged.push(api);
-    }
-  }
-
-  merged.sort((a, b) => (a.order ?? 0) - (b.order ?? 0));
-  return merged;
-}
+// Removed unused mergeTasks function
 export function useTasks(listId) {
   const { user } = useAuth();
   const { socket } = useSocket();

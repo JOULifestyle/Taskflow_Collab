@@ -72,7 +72,6 @@ function TodoPage()  {
   const [severityFilter, setSeverityFilter] = useState("all");
   const [showMembers, setShowMembers] = useState(false);
   const [showShare, setShowShare] = useState(false);
-  const [loading, setLoading] = useState(false);
     const [editingId, setEditingId] = useState(null);
   const [editValue, setEditValue] = useState("");
   const stopEdit = () => {
