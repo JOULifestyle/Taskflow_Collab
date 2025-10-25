@@ -45,8 +45,9 @@ const formatDueDate = (isoStr) => {
 const formatDateForInput = (dateStr) => {
   if (!dateStr) return "";
   const d = new Date(dateStr);
-  // Don't apply timezone offset for datetime-local inputs - they handle it automatically
-  return d.toISOString().slice(0, 16);
+  // Convert to local timezone for display in datetime-local input
+  const localDate = new Date(d.getTime() - d.getTimezoneOffset() * 60000);
+  return localDate.toISOString().slice(0, 16);
 };
 
 function TodoPage()  {

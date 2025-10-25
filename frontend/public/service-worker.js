@@ -74,8 +74,10 @@ self.addEventListener("fetch", (event) => {
       }
 
       return fetch(event.request).then((response) => {
-        // Don't cache API calls or non-success responses
-        if (url.pathname.startsWith("/api") || !response.ok) {
+        // Don't cache API calls, POST/PUT/DELETE requests, or non-success responses
+        if (url.pathname.startsWith("/api") ||
+            event.request.method !== 'GET' ||
+            !response.ok) {
           return response;
         }
 
