@@ -85,8 +85,19 @@ export function useTasks(listId) {
       setTasks([]); // clear tasks
       return;
     }
-    // Don't load from localStorage initially - let the API fetch handle it
-    setTasks([]); // reset when switching lists
+    // Load from localStorage initially for instant UI, but API will override
+    const saved = localStorage.getItem(`tasks-${listId}`);
+    if (saved) {
+      try {
+        console.log(`[LOCALSTORAGE] Loading ${JSON.parse(saved).length} tasks from localStorage`);
+        setTasks(normalizeTasks(JSON.parse(saved)));
+      } catch {
+        localStorage.removeItem(`tasks-${listId}`);
+        setTasks([]);
+      }
+    } else {
+      setTasks([]); // reset when switching lists
+    }
   }, [listId]);
 
 
@@ -123,12 +134,19 @@ export function useTasks(listId) {
         const normalized = normalizeTasks(data);
 
         if (listId) {
-          // For specific list, use server data as source of truth, don't merge with local
+          // For specific list, use server data as source of truth
+          console.log(`[FETCH] Setting ${normalized.length} tasks from server (replacing localStorage)`);
           setTasks(normalized);
           localStorage.setItem(`tasks-${listId}`, JSON.stringify(normalized));
         } else {
           // For all tasks, just set them directly
           setTasks(normalized);
+        }
+
+        // Clear any stale localStorage data that might conflict
+        if (listId) {
+          // Force localStorage to match server state
+          localStorage.setItem(`tasks-${listId}`, JSON.stringify(normalized));
         }
       } catch (err) {
         console.error("Error fetching tasks:", err);
