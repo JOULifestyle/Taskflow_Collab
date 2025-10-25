@@ -39,3 +39,6 @@ beforeAll(() => {
   global.Notification.permission = "granted";
   global.Notification.requestPermission = jest.fn(() => Promise.resolve("granted"));
 });
+
+process.env.TZ = 'Africa/Lagos';
+

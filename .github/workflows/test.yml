@@ -30,6 +30,8 @@ jobs:
 
       - name: Run frontend tests
         working-directory: ./frontend
+        env:
+            TZ: Africa/Lagos
         run: npm test -- --watchAll=false --verbose
 
   # ⚙️ BACKEND TESTS
