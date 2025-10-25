@@ -10,6 +10,7 @@ import { useAuth } from "./context/AuthContext";
 import AuthPage from "./pages/AuthPage";
 import ProtectedRoute from "./components/ProtectedRoute";
 import UserAvatar from "./components/UserAvatar";
+import InstallPrompt from "./components/InstallPrompt";
 
 export default function App() {
   const { token } = useAuth();
@@ -29,6 +30,9 @@ export default function App() {
 
   return (
     <Layout dark={dark}>
+      {/* PWA Install Prompt */}
+      <InstallPrompt />
+
       {/* Fixed Nav */}
       <nav className="fixed top-0 left-0 w-full p-4 bg-white/80 backdrop-blur-md shadow-md flex gap-4 z-10">
         <Link to="/">Tasks</Link>

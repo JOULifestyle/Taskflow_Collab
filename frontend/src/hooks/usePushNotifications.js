@@ -68,7 +68,12 @@ export function usePushNotifications(token) {
     const permission = await Notification.requestPermission();
     console.log(`[Push Notifications] Permission result: ${permission}`);
     if (permission !== "granted") {
-      console.warn("[Push Notifications] Push permission denied");
+      console.warn("[Push Notifications] Push permission denied - user must grant permission manually");
+      // Don't return here - let the user know they need to enable notifications
+      // Show a user-friendly message instead of just logging
+      if (window.confirm && typeof window.alert === 'function') {
+        alert("To receive notifications, please enable notifications for this site in your browser settings and refresh the page.");
+      }
       return;
     }
 

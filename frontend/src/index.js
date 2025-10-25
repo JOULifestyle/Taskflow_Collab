@@ -47,16 +47,6 @@ console.log(`[PWA] Display mode: ${window.matchMedia('(display-mode: standalone)
 console.log(`[PWA] BeforeInstallPrompt event supported: ${'onbeforeinstallprompt' in window}`);
 console.log(`[PWA] UserAgent: ${navigator.userAgent}`);
 
-// Listen for beforeinstallprompt event
-window.addEventListener('beforeinstallprompt', (e) => {
-  console.log(`[PWA] beforeinstallprompt event fired`);
-  // Prevent the mini-infobar from appearing on mobile
-  e.preventDefault();
-  // Stash the event so it can be triggered later
-  window.deferredPrompt = e;
-  console.log(`[PWA] Install prompt available`);
-});
-
 // Listen for appinstalled event
 window.addEventListener('appinstalled', (e) => {
   console.log(`[PWA] App installed successfully`);
