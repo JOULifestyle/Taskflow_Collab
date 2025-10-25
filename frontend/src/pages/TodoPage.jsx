@@ -174,42 +174,9 @@ const urlBase64ToUint8Array = (base64String) => {
   // DnD sensors
   const sensors = useSensors(useSensor(PointerSensor));
 
-  // Offline-first fetch tasks
-  useEffect(() => {
-    if (!user || !currentList?._id) return;
-    const fetchTasks = async () => {
-      const token = localStorage.getItem("token");
-      if (!navigator.onLine) {
-        const saved = localStorage.getItem(`tasks-${currentList?._id}`);
-        if (saved) setTasks(JSON.parse(saved));
-        return;
-      }
+  // Task loading is now handled by useTasks hook
 
-      try {
-      setLoading(true); // start loading
-      const res = await fetch(`${API_URL}/lists/${currentList?._id}/tasks`, { 
-        headers: { Authorization: `Bearer ${token}` },
-        cache: "no-store"   // prevents browser from reusing stale cached responses
-      });
-      const data = await res.json();
-      setTasks(data);
-      localStorage.setItem(`tasks-${currentList?._id}`, JSON.stringify(data));
-    } catch (err) {
-      toast.error("Failed to load tasks");
-      console.error(err);
-    } finally {
-      setLoading(false); // stop loading
-    }
-  };
-
-  fetchTasks();
-}, [user, currentList, setTasks]);
-
-  useEffect(() => {
-  if (currentList?._id) {
-    localStorage.setItem(`tasks-${currentList?._id}`, JSON.stringify(tasks));
-  }
-}, [tasks, currentList]);
+    // Task persistence is now handled by useTasks hook
 
 
   const handleDragEnd = async (event) => {
