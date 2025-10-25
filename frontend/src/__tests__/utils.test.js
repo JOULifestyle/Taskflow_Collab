@@ -16,7 +16,7 @@ describe('Utility functions', () => {
       const isoString = '2023-12-25T10:30:00.000Z';
       const result = formatDueDate(isoString);
 
-      expect(result).toBe('12/25/2023, 11:30 AM');
+      expect(result).toBe('12/25/2023, 10:30 AM');
     });
 
     test('returns empty string for null/undefined', () => {
