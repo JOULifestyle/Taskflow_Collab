@@ -1,6 +1,10 @@
 # 📝 Todo-App
 **A Fullstack Collaborative To-Do Manager**
 
+[![CI/CD](https://github.com/JOULifestyle/Todo-App/actions/workflows/test.yml/badge.svg)](https://github.com/JOULifestyle/Todo-App/actions/workflows/test.yml)
+[![Frontend Tests](https://github.com/JOULifestyle/Todo-App/actions/workflows/test.yml/badge.svg?branch=main&event=push)](https://github.com/JOULifestyle/Todo-App/actions/workflows/test.yml)
+[![Backend Tests](https://github.com/JOULifestyle/Todo-App/actions/workflows/test.yml/badge.svg?branch=main&event=push)](https://github.com/JOULifestyle/Todo-App/actions/workflows/test.yml)
+
 ## 📖 Overview
 **Todo-App** is a comprehensive fullstack task management system designed to help individuals and teams efficiently manage their day-to-day activities. It features real-time collaboration, intelligent notifications, cross-device synchronization, and advanced analytics, all powered by modern web technologies.
 

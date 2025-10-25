@@ -7,7 +7,7 @@ on:
   pull_request:
 
 jobs:
-  # 🧠 FRONTEND TESTS
+  #  FRONTEND TESTS
   frontend-tests:
     runs-on: ubuntu-latest
     strategy:
@@ -34,7 +34,7 @@ jobs:
             TZ: Africa/Lagos
         run: npm test -- --watchAll=false --verbose
 
-  # ⚙️ BACKEND TESTS
+  #  BACKEND TESTS
   backend-tests:
     runs-on: ubuntu-latest
     strategy:
