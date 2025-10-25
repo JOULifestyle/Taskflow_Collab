@@ -85,18 +85,8 @@ export function useTasks(listId) {
       setTasks([]); // clear tasks
       return;
     }
-    // Load tasks from localStorage (per listId)
-    const saved = localStorage.getItem(`tasks-${listId}`);
-    if (saved) {
-      try {
-        setTasks(normalizeTasks(JSON.parse(saved)));
-      } catch {
-        localStorage.removeItem(`tasks-${listId}`);
-        setTasks([]);
-      }
-    } else {
-      setTasks([]); // reset when switching lists
-    }
+    // Don't load from localStorage initially - let the API fetch handle it
+    setTasks([]); // reset when switching lists
   }, [listId]);
 
 
@@ -130,13 +120,9 @@ export function useTasks(listId) {
         const normalized = normalizeTasks(data);
 
         if (listId) {
-          // For specific list, merge with local storage
-          const saved = localStorage.getItem(`tasks-${listId}`);
-          const local = saved ? normalizeTasks(JSON.parse(saved)) : [];
-          const merged = mergeTasks(normalized, local);
-
-          setTasks(merged);
-          localStorage.setItem(`tasks-${listId}`, JSON.stringify(merged));
+          // For specific list, use server data as source of truth, don't merge with local
+          setTasks(normalized);
+          localStorage.setItem(`tasks-${listId}`, JSON.stringify(normalized));
         } else {
           // For all tasks, just set them directly
           setTasks(normalized);
@@ -175,12 +161,9 @@ export function useTasks(listId) {
         const data = await res.json();
         const normalized = normalizeTasks(data);
 
-        const saved = localStorage.getItem(`tasks-${listId}`);
-        const local = saved ? normalizeTasks(JSON.parse(saved)) : [];
-        const merged = mergeTasks(normalized, local);
-
-        setTasks(merged);
-        localStorage.setItem(`tasks-${listId}`, JSON.stringify(merged));
+        // Use server data as source of truth for auto-refresh
+        setTasks(normalized);
+        localStorage.setItem(`tasks-${listId}`, JSON.stringify(normalized));
       } catch (err) {
         console.error("Auto-refresh failed:", err);
         // Don't show toast for auto-refresh failures to avoid spam
@@ -638,17 +621,13 @@ setTasks((prev) =>
           cache: "no-store",
         });
         if (res2.ok) {
-  const data = await res2.json();
-  const normalized = normalizeTasks(data);
+          const data = await res2.json();
+          const normalized = normalizeTasks(data);
 
-  const saved = localStorage.getItem(`tasks-${listId}`);
-const local = saved ? normalizeTasks(JSON.parse(saved)) : [];
-const merged = mergeTasks(normalized, local);
-
-
-  setTasks(merged);
-  localStorage.setItem(`tasks-${listId}`, JSON.stringify(merged));
-}
+          // Use server data as source of truth
+          setTasks(normalized);
+          localStorage.setItem(`tasks-${listId}`, JSON.stringify(normalized));
+        }
       } catch (err) {
         console.error("Failed to refresh tasks after sync", err);
       }
