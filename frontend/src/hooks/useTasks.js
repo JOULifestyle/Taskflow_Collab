@@ -101,12 +101,15 @@ export function useTasks(listId) {
 
         if (listId) {
           // Fetch tasks for specific list
+          console.log(`[FETCH] Fetching tasks for list ${listId}`);
           const res = await fetch(`${API_URL}/lists/${listId}/tasks`, {
             headers: { Authorization: `Bearer ${token}` },
             cache: "no-store",
           });
+          console.log(`[FETCH] Response status: ${res.status}`);
           if (!res.ok) throw new Error("Failed to fetch tasks");
           data = await res.json();
+          console.log(`[FETCH] Received ${data.length} tasks`);
         } else {
           // Fetch all tasks across all lists
           const res = await fetch(`${API_URL}/tasks/all`, {
@@ -150,15 +153,18 @@ export function useTasks(listId) {
     const interval = setInterval(async () => {
       if (!navigator.onLine) return;
       try {
+        console.log(`[AUTO-REFRESH] Fetching tasks for list ${listId}`);
         const res = await fetch(`${API_URL}/lists/${listId}/tasks`, {
           headers: { Authorization: `Bearer ${token}` },
           cache: "no-store",
         });
+        console.log(`[AUTO-REFRESH] Response status: ${res.status}`);
         if (!res.ok) {
           console.warn(`Auto-refresh failed with status: ${res.status}`);
           return;
         }
         const data = await res.json();
+        console.log(`[AUTO-REFRESH] Received ${data.length} tasks`);
         const normalized = normalizeTasks(data);
 
         // Use server data as source of truth for auto-refresh
@@ -338,18 +344,23 @@ setTasks((prev) =>
       }
 
       try {
+        console.log(`[DELETE] Deleting task ${id}`);
         const res = await fetch(`${API_URL}/lists/${listId}/tasks/${id}`, {
           method: "DELETE",
           headers: { Authorization: `Bearer ${token}` },
           cache: "no-store",
         });
+        console.log(`[DELETE] Delete response status: ${res.status}`);
         if (res.ok) {
-  toast.success("Task deleted");
-  setTasks((prev) => prev.filter((t) => t._id !== id));
-}
+          toast.success("Task deleted");
+          setTasks((prev) => prev.filter((t) => t._id !== id));
+        } else {
+          console.error(`[DELETE] Delete failed with status: ${res.status}`);
+          toast.error("Failed to delete task");
+        }
       } catch (err) {
+        console.error("[DELETE] Delete error:", err);
         toast.error("Failed to delete task");
-        console.error(err);
       }
     },
     [token, listId]
