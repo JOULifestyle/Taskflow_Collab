@@ -155,8 +155,10 @@ REACT_APP_API_URL=http://localhost:5000
    ```
 
 4. **Access the Application**
-   - Frontend: http://localhost:3000
-   - Backend API: http://localhost:5000
+   - **Live Demo**: https://todo-app-sigma-gilt.vercel.app/
+   - **Local Development**:
+     - Frontend: http://localhost:3000
+     - Backend API: http://localhost:5000
 
 ---
 
