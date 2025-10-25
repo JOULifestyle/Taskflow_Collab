@@ -3,6 +3,9 @@ import toast from "react-hot-toast";
 
 const AuthContext = createContext();
 
+// Base API URL (use .env or fallback to localhost)
+const API_BASE_URL = process.env.REACT_APP_API_URL || "http://localhost:5000";
+
 function decodeJwt(token) {
   try {
     const payload = JSON.parse(atob(token.split(".")[1]));
@@ -23,7 +26,7 @@ export const AuthProvider = ({ children }) => {
     toast("You’ve been logged out");
   }, []);
 
-  //  Load token & username from localStorage on mount
+  // Load token & username from localStorage on mount
   useEffect(() => {
     const token = localStorage.getItem("token");
     const username = localStorage.getItem("username");
@@ -32,7 +35,7 @@ export const AuthProvider = ({ children }) => {
     if (token && username) {
       const payload = decodeJwt(token);
 
-      // check if token is expired
+      // Check if token is expired
       if (payload?.exp && Date.now() >= payload.exp * 1000) {
         console.warn("Token expired, logging out");
         logout();
@@ -49,7 +52,7 @@ export const AuthProvider = ({ children }) => {
 
   const login = async (username, password) => {
     try {
-      const res = await fetch("http://localhost:5000/auth/login", {
+      const res = await fetch(`${API_BASE_URL}/auth/login`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ username, password }),
@@ -59,9 +62,14 @@ export const AuthProvider = ({ children }) => {
       if (res.ok) {
         localStorage.setItem("token", data.token);
         localStorage.setItem("username", data.username);
-        localStorage.setItem("email", data.email || username); // Store email (fallback to username if not provided)
+        localStorage.setItem("email", data.email || username);
         const payload = decodeJwt(data.token);
-        setUser({ token: data.token, username: data.username, email: data.email || username, _id: payload?.id });
+        setUser({ 
+          token: data.token, 
+          username: data.username, 
+          email: data.email || username, 
+          _id: payload?.id 
+        });
         toast.success("Logged in successfully!");
         return true;
       } else {
@@ -75,9 +83,9 @@ export const AuthProvider = ({ children }) => {
     }
   };
 
-  const signup = async ( username, email, password) => {
+  const signup = async (username, email, password) => {
     try {
-      const res = await fetch("http://localhost:5000/auth/signup", {
+      const res = await fetch(`${API_BASE_URL}/auth/signup`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ username: email, email, password }),
@@ -87,9 +95,14 @@ export const AuthProvider = ({ children }) => {
       if (res.ok) {
         localStorage.setItem("token", data.token);
         localStorage.setItem("username", data.username);
-        localStorage.setItem("email", data.email || username); // Store email (fallback to username if not provided)
+        localStorage.setItem("email", data.email || username);
         const payload = decodeJwt(data.token);
-        setUser({ token: data.token, username: data.username, email: data.email || username, _id: payload?.id });
+        setUser({ 
+          token: data.token, 
+          username: data.username, 
+          email: data.email || username, 
+          _id: payload?.id 
+        });
         toast.success("Signed up successfully!");
         return true;
       } else {
@@ -102,7 +115,6 @@ export const AuthProvider = ({ children }) => {
       return false;
     }
   };
-
 
   return (
     <AuthContext.Provider value={{ user, token: user?.token, login, signup, logout }}>
