@@ -1,4 +1,5 @@
-const CACHE_NAME = "todo-app-cache-v2"; 
+
+const CACHE_NAME = "todo-app-cache-v2";
 const ASSETS_TO_CACHE = [
   "/",
   "/index.html",
@@ -12,49 +13,66 @@ const ASSETS_TO_CACHE = [
 
 
 self.addEventListener("install", (event) => {
-  
-  self.skipWaiting(); 
+  console.log("📥 Installing service worker...");
+
+  self.skipWaiting(); // Activate immediately
+
   event.waitUntil(
     caches.open(CACHE_NAME).then((cache) => {
-      
-      return cache.addAll(ASSETS_TO_CACHE);
+      console.log("🗂️ Caching static assets...");
+      return cache.addAll(ASSETS_TO_CACHE).catch((err) => {
+        console.error("❌ Failed to cache assets:", err);
+      });
     })
   );
 });
 
-// Activate event: clean old caches and claim clients
+
+// Cleans old caches + notifies clients of new version
 self.addEventListener("activate", (event) => {
-  
+  console.log("🚀 Activating service worker...");
+
   event.waitUntil(
-    caches.keys().then((keys) =>
-      Promise.all(
+    (async () => {
+      //  Delete old caches
+      const keys = await caches.keys();
+      await Promise.all(
         keys.map((key) => {
           if (key !== CACHE_NAME) {
-          
+            console.log("🧹 Deleting old cache:", key);
             return caches.delete(key);
           }
         })
-      )
-    )
+      );
+
+      //  Take control of open clients
+      await self.clients.claim();
+
+      //  Notify all clients of new version
+      const clientsList = await self.clients.matchAll({ type: "window" });
+      for (const client of clientsList) {
+        client.postMessage({ type: "NEW_VERSION_AVAILABLE" });
+      }
+
+      console.log("✅ Service worker activated and clients notified");
+    })()
   );
-  return self.clients.claim(); 
 });
 
-// Fetch event: cache-first for static assets, bypass /api calls
+
+// Cache-first strategy for static files; always fetch /api calls
 self.addEventListener("fetch", (event) => {
   const url = new URL(event.request.url);
 
-  // Skip API requests (always go to network)
-  if (url.pathname.startsWith("/api")) {
-    return;
-  }
+  // Skip API/network requests
+  if (url.pathname.startsWith("/api")) return;
 
   event.respondWith(
     caches.match(event.request).then((cached) => {
       return (
         cached ||
         fetch(event.request).catch(() => {
-          // Offline fallback for navigation requests
+          // Offline fallback
           if (event.request.mode === "navigate") {
             return caches.match("/index.html");
           }
@@ -64,17 +82,15 @@ self.addEventListener("fetch", (event) => {
   );
 });
 
-// Push notifications
-self.addEventListener("push", (event) => {
 
+self.addEventListener("push", (event) => {
+  console.log("📨 Push event received");
 
   let data = {};
   if (event.data) {
     try {
       data = event.data.json();
-      
     } catch (err) {
-      
       data = { title: "Notification", body: event.data.text() };
     }
   }
@@ -82,83 +98,65 @@ self.addEventListener("push", (event) => {
   const title = data.title || "New Notification";
   const body = data.body || "You have a new task update";
 
-  // Browser-specific notification options
+  // Browser detection
   const isChrome = /Chrome/.test(navigator.userAgent) && !/Edg\//.test(navigator.userAgent);
   const isFirefox = /Firefox/.test(navigator.userAgent);
   const isEdge = /Edg\//.test(navigator.userAgent);
   const isSafari = /Safari/.test(navigator.userAgent) && !/Chrome/.test(navigator.userAgent);
 
-
-
+  // Base options
   const baseOptions = {
     body,
     icon: "/logo192.png",
     badge: "/logo192.png",
     data: {
-      url: data.url || "/", // open this page on click
+      url: data.url || "/",
     },
   };
 
-  // Browser-specific features
+  // Add vibrate/sound for Chrome/Edge
   if (isChrome || isEdge) {
-    
     baseOptions.vibrate = [200, 100, 200];
-    if ('sound' in Notification.prototype) {
+    if ("sound" in Notification.prototype) {
       baseOptions.sound = "default";
     }
   }
 
+  // Firefox supports vibrate only
   if (isFirefox) {
-    
     baseOptions.vibrate = [200, 100, 200];
   }
 
+  // Safari doesn’t support some options
   if (isSafari) {
     delete baseOptions.badge;
     delete baseOptions.vibrate;
   }
 
-  
-
   event.waitUntil(
     self.registration.showNotification(title, baseOptions)
-      .then(() => {
-        console.log("✅ Notification displayed successfully");
-      })
-      .catch((err) => {
-        console.error("❌ Failed to display notification:", err);
-      })
+      .then(() => console.log("✅ Notification displayed"))
+      .catch((err) => console.error("❌ Failed to show notification:", err))
   );
 });
 
-// Notification click
-self.addEventListener("notificationclick", (event) => {
 
+self.addEventListener("notificationclick", (event) => {
+  console.log("🖱️ Notification clicked");
   event.notification.close();
 
   const data = event.notification.data || {};
   let targetUrl = data.url || "/";
 
-  // Handle different actions
   if (event.action === "view") {
-    // Open the app, potentially with specific task/list context
-    if (data.taskId) {
-      targetUrl = `/?task=${data.taskId}`;
-    } else if (data.listId) {
-      targetUrl = `/?list=${data.listId}`;
-    }
-  } else if (event.action === "snooze") {
-    
-    // For now, it just open the app
+    if (data.taskId) targetUrl = `/?task=${data.taskId}`;
+    else if (data.listId) targetUrl = `/?list=${data.listId}`;
   }
 
   event.waitUntil(
     clients.matchAll({ type: "window", includeUncontrolled: true }).then((clientList) => {
-      // Check if we already have a window open
       for (const client of clientList) {
         if (client.url.includes(self.origin) && "focus" in client) {
-          console.log("🔄 Focusing existing window");
-          // Navigate to the target URL in the existing window
           if (targetUrl !== "/" && client.url !== self.origin + targetUrl) {
             client.navigate(self.origin + targetUrl);
           }
@@ -166,23 +164,9 @@ self.addEventListener("notificationclick", (event) => {
         }
       }
 
-      // No existing window, open a new one
-      
       if (clients.openWindow) {
         return clients.openWindow(targetUrl);
       }
     })
-  );
-});
-
-// Notify clients when a new SW is active
-self.addEventListener("activate", (event) => {
-  event.waitUntil(
-    (async () => {
-      const clientsList = await self.clients.matchAll({ type: "window" });
-      for (const client of clientsList) {
-        client.postMessage({ type: "NEW_VERSION_AVAILABLE" });
-      }
-    })()
   );
 });
