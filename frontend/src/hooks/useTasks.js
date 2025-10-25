@@ -80,25 +80,28 @@ export function useTasks(listId) {
   }, [socket, listId]);
 
    //  Reset when no list is selected
-  useEffect(() => {
-    if (!listId) {
-      setTasks([]); // clear tasks
-      return;
-    }
-    // Load from localStorage initially for instant UI, but API will override
-    const saved = localStorage.getItem(`tasks-${listId}`);
-    if (saved) {
-      try {
-        console.log(`[LOCALSTORAGE] Loading ${JSON.parse(saved).length} tasks from localStorage`);
-        setTasks(normalizeTasks(JSON.parse(saved)));
-      } catch {
-        localStorage.removeItem(`tasks-${listId}`);
-        setTasks([]);
-      }
-    } else {
-      setTasks([]); // reset when switching lists
-    }
-  }, [listId]);
+   useEffect(() => {
+     if (!listId) {
+       setTasks([]); // clear tasks
+       return;
+     }
+     // Load from localStorage initially for instant UI, but API will override
+     const saved = localStorage.getItem(`tasks-${listId}`);
+     if (saved) {
+       try {
+         const parsed = JSON.parse(saved);
+         console.log(`[LOCALSTORAGE] Loading ${parsed.length} tasks from localStorage for list ${listId}:`, parsed.map(t => ({ id: t._id, text: t.text, completed: t.completed })));
+         setTasks(normalizeTasks(parsed));
+       } catch {
+         console.error(`[LOCALSTORAGE] Failed to parse localStorage for list ${listId}, clearing`);
+         localStorage.removeItem(`tasks-${listId}`);
+         setTasks([]);
+       }
+     } else {
+       console.log(`[LOCALSTORAGE] No saved tasks for list ${listId}, starting empty`);
+       setTasks([]); // reset when switching lists
+     }
+   }, [listId]);
 
 
   // Fetch tasks from API when token or listId changes
@@ -135,17 +138,19 @@ export function useTasks(listId) {
 
         if (listId) {
           // For specific list, use server data as source of truth
-          console.log(`[FETCH] Setting ${normalized.length} tasks from server (replacing localStorage)`);
+          console.log(`[FETCH] Setting ${normalized.length} tasks from server (replacing localStorage) for list ${listId}:`, normalized.map(t => ({ id: t._id, text: t.text, completed: t.completed })));
           setTasks(normalized);
           localStorage.setItem(`tasks-${listId}`, JSON.stringify(normalized));
         } else {
           // For all tasks, just set them directly
+          console.log(`[FETCH] Setting ${normalized.length} tasks from server for all lists:`, normalized.map(t => ({ id: t._id, text: t.text, completed: t.completed })));
           setTasks(normalized);
         }
 
         // Clear any stale localStorage data that might conflict
         if (listId) {
           // Force localStorage to match server state
+          console.log(`[FETCH] Updating localStorage for list ${listId} with server data`);
           localStorage.setItem(`tasks-${listId}`, JSON.stringify(normalized));
         }
       } catch (err) {
@@ -159,10 +164,11 @@ export function useTasks(listId) {
   }, [token, listId]);
 
    // Persist tasks to localStorage whenever they change
-  useEffect(() => {
-    if (!listId) return; //  don’t persist if no active list
-    localStorage.setItem(`tasks-${listId}`, JSON.stringify(normalizeTasks(tasks)));
-  }, [tasks, listId]);
+   useEffect(() => {
+     if (!listId) return; //  don’t persist if no active list
+     console.log(`[PERSIST] Saving ${tasks.length} tasks to localStorage for list ${listId}:`, tasks.map(t => ({ id: t._id, text: t.text, completed: t.completed })));
+     localStorage.setItem(`tasks-${listId}`, JSON.stringify(normalizeTasks(tasks)));
+   }, [tasks, listId]);
 
   // Auto-refresh every 30s
   useEffect(() => {
@@ -182,10 +188,11 @@ export function useTasks(listId) {
           return;
         }
         const data = await res.json();
-        console.log(`[AUTO-REFRESH] Received ${data.length} tasks`);
+        console.log(`[AUTO-REFRESH] Received ${data.length} tasks for list ${listId}:`, data.map(t => ({ id: t._id, text: t.text, completed: t.completed })));
         const normalized = normalizeTasks(data);
 
         // Use server data as source of truth for auto-refresh
+        console.log(`[AUTO-REFRESH] Updating tasks state and localStorage for list ${listId}`);
         setTasks(normalized);
         localStorage.setItem(`tasks-${listId}`, JSON.stringify(normalized));
       } catch (err) {
@@ -343,7 +350,9 @@ setTasks((prev) =>
 
   const deleteTask = useCallback(
     async (id) => {
+      console.log(`[DELETE] Attempting to delete task ${id} from list ${listId}`);
       const updated = tasksRef.current.filter((t) => t._id !== id);
+      console.log(`[DELETE] After filter, ${updated.length} tasks remain:`, updated.map(t => ({ id: t._id, text: t.text, completed: t.completed })));
       setTasks(updated);
       localStorage.setItem(`tasks-${listId}`, JSON.stringify(normalizeTasks(updated)));
 
@@ -371,6 +380,7 @@ setTasks((prev) =>
         console.log(`[DELETE] Delete response status: ${res.status}`);
         if (res.ok) {
           toast.success("Task deleted");
+          console.log(`[DELETE] Server confirmed deletion of task ${id}`);
           setTasks((prev) => prev.filter((t) => t._id !== id));
         } else {
           console.error(`[DELETE] Delete failed with status: ${res.status}`);
@@ -654,6 +664,7 @@ setTasks((prev) =>
           const normalized = normalizeTasks(data);
 
           // Use server data as source of truth
+          console.log(`[SYNC] Refreshing tasks after sync for list ${listId}:`, normalized.map(t => ({ id: t._id, text: t.text, completed: t.completed })));
           setTasks(normalized);
           localStorage.setItem(`tasks-${listId}`, JSON.stringify(normalized));
         }
