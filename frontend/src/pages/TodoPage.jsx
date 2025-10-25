@@ -45,9 +45,8 @@ const formatDueDate = (isoStr) => {
 const formatDateForInput = (dateStr) => {
   if (!dateStr) return "";
   const d = new Date(dateStr);
-  const offset = d.getTimezoneOffset();
-  const local = new Date(d.getTime() - offset * 60000); // shift to local
-  return local.toISOString().slice(0, 16);
+  // Don't apply timezone offset for datetime-local inputs - they handle it automatically
+  return d.toISOString().slice(0, 16);
 };
 
 function TodoPage()  {
@@ -573,6 +572,7 @@ if (!currentList) {
                   type="datetime-local"
                   value={dueDate}
                   onChange={(e) => setDueDate(e.target.value)}
+                  placeholder="Select date and time"
                   className="p-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-400 dark:bg-gray-700 dark:border-gray-600 dark:text-white"
                 />
                 <select
@@ -825,6 +825,7 @@ function EditTask({ task, onSave, onCancel }) {
         type="datetime-local"
         value={due}
         onChange={(e) => setDue(e.target.value)}
+        placeholder="Select date and time"
         className={inputClasses}
       />
       <select

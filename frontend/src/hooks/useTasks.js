@@ -168,19 +168,22 @@ export function useTasks(listId) {
           headers: { Authorization: `Bearer ${token}` },
           cache: "no-store",
         });
-        if (!res.ok) return;
+        if (!res.ok) {
+          console.warn(`Auto-refresh failed with status: ${res.status}`);
+          return;
+        }
         const data = await res.json();
         const normalized = normalizeTasks(data);
 
         const saved = localStorage.getItem(`tasks-${listId}`);
-const local = saved ? normalizeTasks(JSON.parse(saved)) : [];
-const merged = mergeTasks(normalized, local);
-
+        const local = saved ? normalizeTasks(JSON.parse(saved)) : [];
+        const merged = mergeTasks(normalized, local);
 
         setTasks(merged);
         localStorage.setItem(`tasks-${listId}`, JSON.stringify(merged));
       } catch (err) {
         console.error("Auto-refresh failed:", err);
+        // Don't show toast for auto-refresh failures to avoid spam
       }
     }, 30000);
 

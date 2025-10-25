@@ -69,15 +69,31 @@ self.addEventListener("fetch", (event) => {
 
   event.respondWith(
     caches.match(event.request).then((cached) => {
-      return (
-        cached ||
-        fetch(event.request).catch(() => {
-          // Offline fallback
-          if (event.request.mode === "navigate") {
-            return caches.match("/index.html");
-          }
-        })
-      );
+      if (cached) {
+        return cached;
+      }
+
+      return fetch(event.request).then((response) => {
+        // Don't cache API calls or non-success responses
+        if (url.pathname.startsWith("/api") || !response.ok) {
+          return response;
+        }
+
+        // Clone the response for caching
+        const responseClone = response.clone();
+        caches.open(CACHE_NAME).then((cache) => {
+          cache.put(event.request, responseClone);
+        });
+
+        return response;
+      }).catch((error) => {
+        console.error("Fetch failed:", error);
+        // Offline fallback
+        if (event.request.mode === "navigate") {
+          return caches.match("/index.html");
+        }
+        throw error;
+      });
     })
   );
 });
