@@ -17,8 +17,12 @@ export function updateTask(updatedTask) {
 }
 
 export function deleteTask(id) {
-  const tasks = loadLocalTasks().map(t =>
-    t.id === id ? { ...t, syncStatus: "deleted" } : t
-  );
-  saveLocalTasks(tasks);
+  const tasks = loadLocalTasks();
+  const updatedTasks = tasks.filter(t => {
+    if (t.id === id) {
+      return false; // Remove the task immediately
+    }
+    return true;
+  });
+  saveLocalTasks(updatedTasks);
 }

@@ -22,8 +22,10 @@ root.render(
 );
 
 // Register service worker
-console.log(`[PWA] Registering service worker...`);
-serviceWorkerRegistration.register();
+console.log(`[PWA] Unregistering old service worker and registering new one...`);
+serviceWorkerRegistration.unregister().then(() => {
+  serviceWorkerRegistration.register();
+});
 
 // Listen for messages from service worker
 if ("serviceWorker" in navigator) {

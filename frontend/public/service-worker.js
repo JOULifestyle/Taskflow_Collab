@@ -60,43 +60,49 @@ self.addEventListener("activate", (event) => {
 });
 
 
-// Cache-first strategy for static files; always fetch /api calls
+// Cache-first strategy for static files; network-first for API calls
 self.addEventListener("fetch", (event) => {
   const url = new URL(event.request.url);
 
-  // Skip API/network requests
-  if (url.pathname.startsWith("/api")) return;
+  // Use network-first strategy for API calls
+  if (url.pathname.startsWith("/api") || url.pathname.startsWith("/tasks") || url.pathname.startsWith("/lists")) {
+    event.respondWith(
+      fetch(event.request)
+        .catch(() => caches.match(event.request))
+    );
+    return;
+  }
 
+  // Cache-first for static assets
   event.respondWith(
-    caches.match(event.request).then((cached) => {
-      if (cached) {
-        return cached;
-      }
+    caches.match(event.request)
+      .then((cached) => {
+        if (cached) {
+          return cached;
+        }
 
-      return fetch(event.request).then((response) => {
-        // Don't cache API calls, POST/PUT/DELETE requests, or non-success responses
-        if (url.pathname.startsWith("/api") ||
-            event.request.method !== 'GET' ||
-            !response.ok) {
+        return fetch(event.request).then((response) => {
+          // Only cache successful GET requests for static assets
+          if (event.request.method !== 'GET' || !response.ok) {
+            return response;
+          }
+
+          // Clone the response for caching
+          const responseClone = response.clone();
+          caches.open(CACHE_NAME).then((cache) => {
+            cache.put(event.request, responseClone);
+          });
+
           return response;
-        }
-
-        // Clone the response for caching
-        const responseClone = response.clone();
-        caches.open(CACHE_NAME).then((cache) => {
-          cache.put(event.request, responseClone);
+        }).catch((error) => {
+          console.error("Fetch failed:", error);
+          // Offline fallback for navigation
+          if (event.request.mode === "navigate") {
+            return caches.match("/index.html");
+          }
+          throw error;
         });
-
-        return response;
-      }).catch((error) => {
-        console.error("Fetch failed:", error);
-        // Offline fallback
-        if (event.request.mode === "navigate") {
-          return caches.match("/index.html");
-        }
-        throw error;
-      });
-    })
+      })
   );
 });
 
