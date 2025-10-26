@@ -572,80 +572,111 @@ setTasks((prev) =>
 
   
   // Queue Sync
-  
+
   useEffect(() => {
     if (!queue.length || !listId) return;
     let cancelled = false;
+    let syncInProgress = false;
 
     const trySync = async () => {
-      if (!navigator.onLine || cancelled) return;
+      if (!navigator.onLine || cancelled || syncInProgress) return;
 
+      syncInProgress = true;
       const newQueue = [...queue];
       const tempIdMap = {};
+      const failedActions = [];
 
-      // First: process ADDs (to map temp ids -> real ids)
-      for (const action of queue.filter((a) => a.type === "ADD")) {
-        try {
-          const headers = { ...(action.options.headers || {}) };
-          if (token && !headers.Authorization) headers.Authorization = `Bearer ${token}`;
-          const options = { ...action.options, headers, cache: "no-store" };
+      try {
+        // First: process ADDs (to map temp ids -> real ids)
+        for (const action of queue.filter((a) => a.type === "ADD")) {
+          try {
+            const headers = { ...(action.options.headers || {}) };
+            if (token && !headers.Authorization) headers.Authorization = `Bearer ${token}`;
+            const options = { ...action.options, headers, cache: "no-store" };
 
-          const res = await fetch(action.url, options);
-          if (!res.ok) throw new Error("Failed to sync ADD");
+            const res = await fetch(action.url, options);
+            if (!res.ok) {
+              console.warn(`[SYNC] ADD failed with status ${res.status}, will retry later`);
+              failedActions.push(action);
+              continue;
+            }
 
-          const created = await res.json();
-          tempIdMap[action.meta.tempId] = created._id;
+            const created = await res.json();
+            tempIdMap[action.meta.tempId] = created._id;
 
-          setTasks((prev) => prev.map((t) => (t._id === action.meta.tempId ? created : t)));
+            setTasks((prev) => prev.map((t) => (t._id === action.meta.tempId ? created : t)));
 
-          const index = newQueue.indexOf(action);
-          if (index > -1) newQueue.splice(index, 1);
-        } catch (err) {
-          console.error("Failed to sync ADD", action, err);
+            const index = newQueue.indexOf(action);
+            if (index > -1) newQueue.splice(index, 1);
+          } catch (err) {
+            console.warn("[SYNC] Failed to sync ADD, will retry later", action, err);
+            failedActions.push(action);
+          }
         }
-      }
 
-      // Then: process remaining actions, substituting temp ids where needed
-      for (const action of [...newQueue]) {
-        try {
-          let realUrl = action.url;
-          if (action.dependsOn && tempIdMap[action.dependsOn]) {
-            realUrl = action.url.replace(action.dependsOn, tempIdMap[action.dependsOn]);
+        // Then: process remaining actions, substituting temp ids where needed
+        for (const action of [...newQueue]) {
+          // Skip if this action depends on a temp ID that couldn't be mapped
+          if (action.dependsOn && !tempIdMap[action.dependsOn]) {
+            console.warn(`[SYNC] Skipping action because temp ID ${action.dependsOn} couldn't be mapped`, action);
+            failedActions.push(action);
+            continue;
           }
 
-          const headers = { ...(action.options.headers || {}) };
-          if (token && !headers.Authorization) headers.Authorization = `Bearer ${token}`;
-          const options = { ...action.options, headers, cache: "no-store" };
+          try {
+            let realUrl = action.url;
+            if (action.dependsOn && tempIdMap[action.dependsOn]) {
+              realUrl = action.url.replace(action.dependsOn, tempIdMap[action.dependsOn]);
+            }
 
-          const res = await fetch(realUrl, options);
-          if (!res.ok) throw new Error("Failed to sync action");
+            const headers = { ...(action.options.headers || {}) };
+            if (token && !headers.Authorization) headers.Authorization = `Bearer ${token}`;
+            const options = { ...action.options, headers, cache: "no-store" };
 
-          const index = newQueue.indexOf(action);
-          if (index > -1) newQueue.splice(index, 1);
+            const res = await fetch(realUrl, options);
+            if (!res.ok) {
+              console.warn(`[SYNC] Action failed with status ${res.status}, will retry later`, action);
+              failedActions.push(action);
+              continue;
+            }
+
+            const index = newQueue.indexOf(action);
+            if (index > -1) newQueue.splice(index, 1);
+          } catch (err) {
+            console.warn("[SYNC] Failed to sync action, will retry later", action, err);
+            failedActions.push(action);
+          }
+        }
+
+        // If we have failed actions, show a user-friendly message
+        if (failedActions.length > 0) {
+          console.warn(`[SYNC] ${failedActions.length} actions failed to sync, will retry on next online event`);
+          // Don't show toast to avoid spam - the actions will retry automatically
+        }
+
+        // Update queue with only failed actions (they will retry on next sync)
+        setQueue(failedActions);
+
+        // Final: refresh canonical list from server
+        try {
+          const res2 = await fetch(`${API_URL}/lists/${listId}/tasks`, {
+            headers: { Authorization: `Bearer ${token}` },
+            cache: "no-store",
+          });
+          if (res2.ok) {
+            const data = await res2.json();
+            const normalized = normalizeTasks(data);
+
+            // Use server data as source of truth
+            console.log(`[SYNC] Refreshing tasks after sync for list ${listId}:`, normalized.map(t => ({ id: t._id, text: t.text, completed: t.completed })));
+            setTasks(normalized);
+            localStorage.setItem(`tasks-${listId}`, JSON.stringify(normalized));
+          }
         } catch (err) {
-          console.error("Failed to sync action", action, err);
+          console.error("Failed to refresh tasks after sync", err);
         }
-      }
-
-      setQueue(newQueue);
-
-      // Final: refresh canonical list from server
-      try {
-        const res2 = await fetch(`${API_URL}/lists/${listId}/tasks`, {
-          headers: { Authorization: `Bearer ${token}` },
-          cache: "no-store",
-        });
-        if (res2.ok) {
-          const data = await res2.json();
-          const normalized = normalizeTasks(data);
-
-          // Use server data as source of truth
-          console.log(`[SYNC] Refreshing tasks after sync for list ${listId}:`, normalized.map(t => ({ id: t._id, text: t.text, completed: t.completed })));
-          setTasks(normalized);
-          localStorage.setItem(`tasks-${listId}`, JSON.stringify(normalized));
-        }
-      } catch (err) {
-        console.error("Failed to refresh tasks after sync", err);
+      } finally {
+        syncInProgress = false;
       }
     };
 
