@@ -193,11 +193,18 @@ export function useTasks(listId) {
     async (text, due, priority, category, repeat = null) => {
       if (!text?.trim() || !listId) return;
 
+      // Handle datetime-local input which gives local time
+      let dueDate = null;
+      if (due) {
+        const localDate = new Date(due);
+        dueDate = localDate.toISOString();
+      }
+
       const tempId = `temp-${Date.now()}`;
       const newTask = {
         _id: tempId,
         text,
-        due,
+        due: dueDate,
         priority,
         category,
         repeat,
@@ -218,7 +225,7 @@ export function useTasks(listId) {
             options: {
               method: "POST",
               headers: { "Content-Type": "application/json" },
-              body: JSON.stringify({ text, due, priority, category, repeat }),
+              body: JSON.stringify({ text, due: dueDate, priority, category, repeat }),
             },
             meta: { tempId },
           },
@@ -235,7 +242,7 @@ export function useTasks(listId) {
             Authorization: `Bearer ${token}`,
           },
           cache: "no-store",
-          body: JSON.stringify({ text, due, priority, category, repeat }),
+          body: JSON.stringify({ text, due: dueDate, priority, category, repeat }),
         });
         if (!res.ok) throw new Error("Failed to add task");
         const created = await res.json();
