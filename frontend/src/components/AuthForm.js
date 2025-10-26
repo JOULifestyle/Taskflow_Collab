@@ -14,6 +14,7 @@ export default function AuthForm() {
   const [loading, setLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const [errors, setErrors] = useState({});
+  const [authError, setAuthError] = useState("");
   const navigate = useNavigate();
 
   const validateForm = () => {
@@ -48,9 +49,13 @@ export default function AuthForm() {
 
   const handleInputChange = (field, value) => {
     setFormData(prev => ({ ...prev, [field]: value }));
-    // Clear error when user starts typing
+    // Clear field-specific error when user starts typing
     if (errors[field]) {
       setErrors(prev => ({ ...prev, [field]: "" }));
+    }
+    // Clear auth error when user starts typing
+    if (authError) {
+      setAuthError("");
     }
   };
 
@@ -62,6 +67,8 @@ export default function AuthForm() {
     }
 
     setLoading(true);
+    setAuthError(""); // Clear any previous auth errors
+
     try {
       let success;
       if (mode === "login") {
@@ -75,7 +82,22 @@ export default function AuthForm() {
         navigate("/");
       }
     } catch (err) {
-      toast.error(err.message || "Authentication failed");
+      // Handle authentication errors specifically
+      const errorMessage = err.message || "Authentication failed";
+
+      // Set specific error messages based on common scenarios
+      if (errorMessage.includes("Invalid credentials") || errorMessage.includes("User not found")) {
+        setAuthError("Invalid email or password. Please check your credentials and try again.");
+      } else if (errorMessage.includes("Username or email already exists")) {
+        setAuthError("An account with this email already exists. Please try logging in instead.");
+      } else if (errorMessage.includes("Network error")) {
+        setAuthError("Unable to connect to the server. Please check your internet connection and try again.");
+      } else {
+        setAuthError(errorMessage);
+      }
+
+      // Don't show toast for auth errors - we show them inline
+      console.error("Authentication error:", err);
     } finally {
       setLoading(false);
     }
@@ -84,6 +106,7 @@ export default function AuthForm() {
   const toggleMode = () => {
     setMode(mode === "login" ? "signup" : "login");
     setErrors({});
+    setAuthError(""); // Clear auth errors when switching modes
     setFormData({
       email: formData.email, // Keep email when switching
       password: "",
@@ -92,13 +115,13 @@ export default function AuthForm() {
   };
 
   return (
-    <div className="bg-white rounded-2xl shadow-xl p-8 w-full max-w-md border border-gray-100">
+    <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-xl p-8 w-full max-w-md border border-gray-100 dark:border-gray-700 transition-colors duration-300">
       {/* Header */}
       <div className="text-center mb-8">
-        <h2 className="text-2xl font-bold text-gray-900 mb-2">
+        <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-2">
           {mode === "login" ? "Welcome Back" : "Create Account"}
         </h2>
-        <p className="text-gray-600 text-sm">
+        <p className="text-gray-600 dark:text-gray-300 text-sm">
           {mode === "login"
             ? "Sign in to your account to continue"
             : "Join us and start organizing your tasks"
@@ -106,10 +129,22 @@ export default function AuthForm() {
         </p>
       </div>
 
+      {/* Auth Error Message */}
+      {authError && (
+        <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg p-4">
+          <div className="flex items-center">
+            <svg className="w-5 h-5 text-red-600 dark:text-red-400 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+            </svg>
+            <p className="text-sm text-red-800 dark:text-red-200 font-medium">{authError}</p>
+          </div>
+        </div>
+      )}
+
       <form onSubmit={handleSubmit} className="space-y-6">
         {/* Email Field */}
         <div>
-          <label htmlFor="email" className="block text-sm font-medium text-gray-700 mb-2">
+          <label htmlFor="email" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
             Email Address
           </label>
           <div className="relative">
@@ -119,22 +154,22 @@ export default function AuthForm() {
               placeholder="Enter your email"
               value={formData.email}
               onChange={(e) => handleInputChange("email", e.target.value)}
-              className={`w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200 ${
+              className={`w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200 bg-white dark:bg-gray-700 text-gray-900 dark:text-white placeholder-gray-500 dark:placeholder-gray-400 ${
                 errors.email
-                  ? "border-red-300 focus:ring-red-500"
-                  : "border-gray-300 hover:border-gray-400"
+                  ? "border-red-300 dark:border-red-500 focus:ring-red-500"
+                  : "border-gray-300 dark:border-gray-600 hover:border-gray-400 dark:hover:border-gray-500"
               }`}
               disabled={loading}
             />
             {errors.email && (
-              <p className="mt-1 text-sm text-red-600">{errors.email}</p>
+              <p className="mt-1 text-sm text-red-600 dark:text-red-400">{errors.email}</p>
             )}
           </div>
         </div>
 
         {/* Password Field */}
         <div>
-          <label htmlFor="password" className="block text-sm font-medium text-gray-700 mb-2">
+          <label htmlFor="password" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
             Password
           </label>
           <div className="relative">
@@ -144,17 +179,17 @@ export default function AuthForm() {
               placeholder="Enter your password"
               value={formData.password}
               onChange={(e) => handleInputChange("password", e.target.value)}
-              className={`w-full px-4 py-3 pr-12 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200 ${
+              className={`w-full px-4 py-3 pr-12 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200 bg-white dark:bg-gray-700 text-gray-900 dark:text-white placeholder-gray-500 dark:placeholder-gray-400 ${
                 errors.password
-                  ? "border-red-300 focus:ring-red-500"
-                  : "border-gray-300 hover:border-gray-400"
+                  ? "border-red-300 dark:border-red-500 focus:ring-red-500"
+                  : "border-gray-300 dark:border-gray-600 hover:border-gray-400 dark:hover:border-gray-500"
               }`}
               disabled={loading}
             />
             <button
               type="button"
               onClick={() => setShowPassword(!showPassword)}
-              className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-500 hover:text-gray-700 focus:outline-none"
+              className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200 focus:outline-none transition-colors duration-200"
               disabled={loading}
             >
               {showPassword ? (
@@ -169,7 +204,7 @@ export default function AuthForm() {
               )}
             </button>
             {errors.password && (
-              <p className="mt-1 text-sm text-red-600">{errors.password}</p>
+              <p className="mt-1 text-sm text-red-600 dark:text-red-400">{errors.password}</p>
             )}
           </div>
         </div>
@@ -177,7 +212,7 @@ export default function AuthForm() {
         {/* Confirm Password Field (Signup only) */}
         {mode === "signup" && (
           <div>
-            <label htmlFor="confirmPassword" className="block text-sm font-medium text-gray-700 mb-2">
+            <label htmlFor="confirmPassword" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
               Confirm Password
             </label>
             <input
@@ -186,15 +221,15 @@ export default function AuthForm() {
               placeholder="Confirm your password"
               value={formData.confirmPassword}
               onChange={(e) => handleInputChange("confirmPassword", e.target.value)}
-              className={`w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200 ${
+              className={`w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200 bg-white dark:bg-gray-700 text-gray-900 dark:text-white placeholder-gray-500 dark:placeholder-gray-400 ${
                 errors.confirmPassword
-                  ? "border-red-300 focus:ring-red-500"
-                  : "border-gray-300 hover:border-gray-400"
+                  ? "border-red-300 dark:border-red-500 focus:ring-red-500"
+                  : "border-gray-300 dark:border-gray-600 hover:border-gray-400 dark:hover:border-gray-500"
               }`}
               disabled={loading}
             />
             {errors.confirmPassword && (
-              <p className="mt-1 text-sm text-red-600">{errors.confirmPassword}</p>
+              <p className="mt-1 text-sm text-red-600 dark:text-red-400">{errors.confirmPassword}</p>
             )}
           </div>
         )}
@@ -203,7 +238,7 @@ export default function AuthForm() {
         <button
           type="submit"
           disabled={loading}
-          className="w-full bg-blue-600 text-white py-3 px-4 rounded-lg font-medium hover:bg-blue-700 focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200 flex items-center justify-center gap-2"
+          className="w-full bg-blue-600 dark:bg-blue-500 text-white py-3 px-4 rounded-lg font-medium hover:bg-blue-700 dark:hover:bg-blue-600 focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200 flex items-center justify-center gap-2"
         >
           {loading ? (
             <>
@@ -220,12 +255,12 @@ export default function AuthForm() {
 
         {/* Toggle Mode */}
         <div className="text-center">
-          <p className="text-sm text-gray-600">
+          <p className="text-sm text-gray-600 dark:text-gray-400">
             {mode === "login" ? "Don't have an account?" : "Already have an account?"}{" "}
             <button
               type="button"
               onClick={toggleMode}
-              className="text-blue-600 hover:text-blue-500 font-medium focus:outline-none focus:underline transition-colors duration-200"
+              className="text-blue-600 dark:text-blue-400 hover:text-blue-500 dark:hover:text-blue-300 font-medium focus:outline-none focus:underline transition-colors duration-200"
               disabled={loading}
             >
               {mode === "login" ? "Sign up" : "Sign in"}

@@ -282,107 +282,135 @@ if (!currentList) {
   };
 
   return (
-    <div className="max-w-md mx-auto p-6 bg-white dark:bg-gray-900 rounded-2xl shadow-lg">
-      {/* Install PWA */}
-      {installable && (
-        <button
-          onClick={handleInstallClick}
-          className="mb-4 w-full flex items-center justify-center gap-2 bg-green-600 dark:bg-green-700 text-white py-2 rounded-lg hover:bg-green-700 dark:hover:bg-green-800 transition"
-        >
-          📲 Install App
-        </button>
-      )}
+    <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-indigo-50 dark:from-gray-900 dark:via-gray-800 dark:to-gray-900 flex items-center justify-center p-4">
+      <div className="w-full max-w-md">
+        {/* Install PWA */}
+        {installable && (
+          <button
+            onClick={handleInstallClick}
+            className="mb-6 w-full flex items-center justify-center gap-2 bg-green-600 dark:bg-green-700 text-white py-3 rounded-lg hover:bg-green-700 dark:hover:bg-green-800 transition font-medium shadow-lg"
+          >
+            📲 Install App
+          </button>
+        )}
 
-      <h1 className="text-2xl font-bold mb-4 text-gray-800 dark:text-gray-100">
-        My Lists
-      </h1>
+        <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-xl p-6 w-full border border-gray-100 dark:border-gray-700">
+          <h1 className="text-2xl font-bold mb-6 text-gray-900 dark:text-white text-center">
+            📋 My Lists
+          </h1>
 
-      {listsLoading ? (
-        <p className="text-gray-500 dark:text-gray-400">Loading lists...</p>
-      ) : lists.length === 0 ? (
-        <p className="text-gray-500 dark:text-gray-400">No lists yet. Add one below!</p>
-      ) : (
-        <ul className="space-y-3">
-          {lists.map((list) => (
-           <li
-  key={list._id}
-  className="flex justify-between items-center bg-gray-100 dark:bg-gray-800 px-4 py-3 rounded-lg shadow-sm hover:shadow-md transition"
->
-  {/* Editable List Name */}
-  {editingId === list._id ? (
-    <input
-      value={editValue}
-      onChange={(e) => setEditValue(e.target.value)}
-      onBlur={() => handleEdit(list._id)}
-      onKeyDown={(e) => e.key === "Enter" && handleEdit(list._id)}
-      autoFocus
-      className="flex-1 px-2 py-1 border border-gray-300 dark:border-gray-600 rounded bg-white dark:bg-gray-700 text-gray-800 dark:text-gray-200"
-    />
-  ) : (
-    <span
-      className="flex-1 cursor-pointer font-medium text-gray-800 dark:text-gray-200"
-      onClick={() => selectList(list)}
-    >
-      {list.name}
-    </span>
-  )}
+          {listsLoading ? (
+            <div className="flex justify-center items-center py-8">
+              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-500"></div>
+              <span className="ml-3 text-gray-600 dark:text-gray-300">Loading lists...</span>
+            </div>
+          ) : lists.length === 0 ? (
+            <div className="text-center py-8">
+              <div className="text-6xl mb-4">📝</div>
+              <p className="text-gray-500 dark:text-gray-400 mb-6">No lists yet. Create your first list below!</p>
+            </div>
+          ) : (
+            <ul className="space-y-3 mb-6">
+              {lists.map((list) => (
+                <li
+                  key={list._id}
+                  className="bg-gray-50 dark:bg-gray-700 rounded-lg p-4 hover:bg-gray-100 dark:hover:bg-gray-600 transition-colors"
+                >
+                  {/* Editable List Name */}
+                  {editingId === list._id ? (
+                    <div className="flex gap-2">
+                      <input
+                        value={editValue}
+                        onChange={(e) => setEditValue(e.target.value)}
+                        onBlur={() => handleEdit(list._id)}
+                        onKeyDown={(e) => e.key === "Enter" && handleEdit(list._id)}
+                        autoFocus
+                        className="flex-1 px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                        placeholder="List name"
+                      />
+                      <button
+                        onClick={() => handleEdit(list._id)}
+                        className="px-3 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors text-sm font-medium"
+                      >
+                        Save
+                      </button>
+                    </div>
+                  ) : (
+                    <div className="flex items-center justify-between">
+                      <span
+                        className="flex-1 cursor-pointer font-medium text-gray-900 dark:text-white hover:text-blue-600 dark:hover:text-blue-400 transition-colors"
+                        onClick={() => selectList(list)}
+                      >
+                        {list.name}
+                      </span>
 
-  {/* Action buttons */}
-  <div className="flex items-center gap-2 ml-3">
-    {/* Edit Button */}
-    <button
-      onClick={() => {
-        setEditingId(list._id);
-        setEditValue(list.name);
-      }}
-      className="text-xs bg-yellow-500 hover:bg-yellow-600 text-white px-2 py-1 rounded-md transition"
-    >
-      ✏️ Edit
-    </button>
+                      {/* Action buttons */}
+                      <div className="flex items-center gap-2 ml-3">
+                        <button
+                          onClick={() => {
+                            setEditingId(list._id);
+                            setEditValue(list.name);
+                          }}
+                          className="p-2 text-gray-500 hover:text-yellow-600 dark:hover:text-yellow-400 transition-colors"
+                          title="Edit list name"
+                        >
+                          ✏️
+                        </button>
 
-    {/* Delete Button */}
-    <button
-      onClick={() => {
-        if (window.confirm(`Delete list "${list.name}"?`)) {
-          deleteList(list._id); 
-        }
-      }}
-      className="text-xs bg-red-500 hover:bg-red-600 text-white px-3 py-1 rounded-md transition"
-    >
-      🗑 Delete
-    </button>
-  </div>
-</li>
-          ))}
-        </ul>
-      )}
+                        <button
+                          onClick={() => {
+                            if (window.confirm(`Delete list "${list.name}"?`)) {
+                              deleteList(list._id);
+                            }
+                          }}
+                          className="p-2 text-gray-500 hover:text-red-600 dark:hover:text-red-400 transition-colors"
+                          title="Delete list"
+                        >
+                          🗑️
+                        </button>
+                      </div>
+                    </div>
+                  )}
+                </li>
+              ))}
+            </ul>
+          )}
 
-      {/* Add List Form */}
-      <form
-        className="mt-6 flex gap-2"
-        onSubmit={(e) => {
-          e.preventDefault();
-          const formData = new FormData(e.target);
-          const name = formData.get("listName");
-          if (name) {
-            createList(name);
-            e.target.reset();
-          }
-        }}
-      >
-        <input
-          type="text"
-          name="listName"
-          placeholder="Enter new list name"
-          className="flex-1 px-3 py-2 border border-gray-300 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-800 text-gray-800 dark:text-gray-200 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500"
-        />
-        <button
-          type="submit"
-          className="flex items-center justify-center gap-1 bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg transition"
-        >
-          ➕ Add
-        </button>
-      </form>
+          {/* Add List Form */}
+          <form
+            className="flex gap-3"
+            onSubmit={(e) => {
+              e.preventDefault();
+              const formData = new FormData(e.target);
+              const name = formData.get("listName");
+              if (name?.trim()) {
+                createList(name.trim());
+                e.target.reset();
+              }
+            }}
+          >
+            <input
+              type="text"
+              name="listName"
+              placeholder="Enter new list name"
+              className="flex-1 px-4 py-3 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white placeholder-gray-500 dark:placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
+              required
+            />
+            <button
+              type="submit"
+              className="px-6 py-3 bg-blue-600 hover:bg-blue-700 dark:bg-blue-500 dark:hover:bg-blue-600 text-white rounded-lg transition-colors font-medium flex items-center gap-2"
+            >
+              <span className="text-lg">➕</span>
+              Add
+            </button>
+          </form>
+        </div>
+
+        {/* Footer */}
+        <div className="text-center mt-6 text-sm text-gray-500 dark:text-gray-400">
+          <p>© 2025 TaskFlow. Organize your world.</p>
+        </div>
+      </div>
     </div>
   );
 }
