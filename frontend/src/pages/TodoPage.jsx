@@ -45,10 +45,14 @@ const formatDueDate = (isoStr) => {
 const formatDateForInput = (dateStr) => {
   if (!dateStr) return "";
   const d = new Date(dateStr);
-  // Convert to local timezone for display in datetime-local input
-  // This ensures the input shows the correct local time
-  const localDate = new Date(d.getTime() - d.getTimezoneOffset() * 60000);
-  return localDate.toISOString().slice(0, 16);
+  // datetime-local input expects local time in YYYY-MM-DDThh:mm format
+  // pad with leading zeros where needed
+  const year = d.getFullYear();
+  const month = String(d.getMonth() + 1).padStart(2, '0');
+  const day = String(d.getDate()).padStart(2, '0');
+  const hours = String(d.getHours()).padStart(2, '0');
+  const minutes = String(d.getMinutes()).padStart(2, '0');
+  return `${year}-${month}-${day}T${hours}:${minutes}`;
 };
 
 function TodoPage()  {
@@ -829,7 +833,11 @@ function EditTask({ task, onSave, onCancel }) {
       </select>
       <div className="flex gap-2 mt-2">
         <button
-          onClick={() => onSave({ text, due: due ? new Date(due).toISOString() : null, priority, category, repeat: repeat || null })}
+          onClick={() => {
+            // When creating a Date from datetime-local value, specify it's in local time
+            const dueDate = due ? new Date(due).toISOString() : null;
+            onSave({ text, due: dueDate, priority, category, repeat: repeat || null });
+          }}
           className={`${buttonBase} bg-green-500 hover:bg-green-600`}
         >
           Save
