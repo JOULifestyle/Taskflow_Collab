@@ -47,10 +47,18 @@ export function usePushNotifications(token) {
 
       if (reg.active?.state !== "activated") {
         console.log(`[Push Notifications] SW not activated, waiting for statechange...`);
-        await new Promise((resolve) => {
+        await new Promise((resolve, reject) => {
+          const timeout = setTimeout(() => {
+            console.warn(`[Push Notifications] SW activation timeout after 10s`);
+            reject(new Error("SW activation timeout"));
+          }, 10000);
+
           reg.active.addEventListener("statechange", (e) => {
             console.log(`[Push Notifications] SW state changed to: ${e.target.state}`);
-            if (e.target.state === "activated") resolve();
+            if (e.target.state === "activated") {
+              clearTimeout(timeout);
+              resolve();
+            }
           });
         });
       }
@@ -59,9 +67,12 @@ export function usePushNotifications(token) {
     }
 
     async function subscribe() {
-  try {
-    console.log(`[Push Notifications] Starting subscription process...`);
-    const reg = await waitForActiveSW();
+   try {
+     console.log(`[Push Notifications] Starting subscription process...`);
+     const reg = await waitForActiveSW().catch((error) => {
+       console.error(`[Push Notifications] Failed to wait for active SW:`, error);
+       throw error;
+     });
 
     // Re-request permission if not granted
     console.log(`[Push Notifications] Requesting notification permission...`);

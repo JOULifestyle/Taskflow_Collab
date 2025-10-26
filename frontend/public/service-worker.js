@@ -22,6 +22,7 @@ self.addEventListener("install", (event) => {
       console.log("🗂️ Caching static assets...");
       return cache.addAll(ASSETS_TO_CACHE).catch((err) => {
         console.error("❌ Failed to cache assets:", err);
+        // Don't throw error - allow SW to install even if caching fails
       });
     })
   );
@@ -34,27 +35,32 @@ self.addEventListener("activate", (event) => {
 
   event.waitUntil(
     (async () => {
-      //  Delete old caches
-      const keys = await caches.keys();
-      await Promise.all(
-        keys.map((key) => {
-          if (key !== CACHE_NAME) {
-            console.log("🧹 Deleting old cache:", key);
-            return caches.delete(key);
-          }
-        })
-      );
+      try {
+        //  Delete old caches
+        const keys = await caches.keys();
+        await Promise.all(
+          keys.map((key) => {
+            if (key !== CACHE_NAME) {
+              console.log("🧹 Deleting old cache:", key);
+              return caches.delete(key);
+            }
+          })
+        );
 
-      //  Take control of open clients
-      await self.clients.claim();
+        //  Take control of open clients
+        await self.clients.claim();
 
-      //  Notify all clients of new version
-      const clientsList = await self.clients.matchAll({ type: "window" });
-      for (const client of clientsList) {
-        client.postMessage({ type: "NEW_VERSION_AVAILABLE" });
+        //  Notify all clients of new version
+        const clientsList = await self.clients.matchAll({ type: "window" });
+        for (const client of clientsList) {
+          client.postMessage({ type: "NEW_VERSION_AVAILABLE" });
+        }
+
+        console.log("✅ Service worker activated and clients notified");
+      } catch (error) {
+        console.error("❌ Error during service worker activation:", error);
+        throw error;
       }
-
-      console.log("✅ Service worker activated and clients notified");
     })()
   );
 });

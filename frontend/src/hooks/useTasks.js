@@ -170,6 +170,10 @@ export function useTasks(listId) {
       } catch (err) {
         console.error("Auto-refresh failed:", err);
         // Don't show toast for auto-refresh failures to avoid spam
+        // Check if it's a connection error and handle gracefully
+        if (err.name === 'TypeError' && err.message.includes('Failed to fetch')) {
+          console.warn(`[AUTO-REFRESH] Network error, will retry on next interval`);
+        }
       }
     }, 30000);
 

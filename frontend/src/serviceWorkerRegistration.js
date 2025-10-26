@@ -83,8 +83,9 @@ function checkValidServiceWorker(swUrl, config) {
 
 export function unregister() {
   if ('serviceWorker' in navigator) {
-    navigator.serviceWorker.ready
+    return navigator.serviceWorker.ready
       .then((registration) => registration.unregister())
       .catch((error) => console.error(error));
   }
+  return Promise.resolve(); // Return a resolved promise if no service worker support
 }

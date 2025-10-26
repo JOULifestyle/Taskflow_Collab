@@ -24,7 +24,10 @@ root.render(
 // Register service worker
 console.log(`[PWA] Unregistering old service worker and registering new one...`);
 serviceWorkerRegistration.unregister().then(() => {
+  console.log('[PWA] Unregister completed, now registering new SW');
   serviceWorkerRegistration.register();
+}).catch((error) => {
+  console.error('[PWA] Error during SW unregister/register process:', error);
 });
 
 // Listen for messages from service worker
