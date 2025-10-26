@@ -120,7 +120,7 @@ describe('useTasks', () => {
     const { result } = renderHook(() => useTasks('list1'));
 
     await waitFor(() => {
-      expect(result.current.tasks).toHaveLength(2);
+      expect(result.current.tasks).toHaveLength(1); // API tasks replace local tasks
     });
   });
 
