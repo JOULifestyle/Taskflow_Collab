@@ -45,9 +45,10 @@ const formatDueDate = (isoStr) => {
 const formatDateForInput = (dateStr) => {
   if (!dateStr) return "";
   const d = new Date(dateStr);
-  // For datetime-local input, we want to show the date as-is without timezone conversion
-  // The input will handle timezone display correctly
-  return d.toISOString().slice(0, 16);
+  // Convert to local timezone for display in datetime-local input
+  // This ensures the input shows the correct local time
+  const localDate = new Date(d.getTime() - d.getTimezoneOffset() * 60000);
+  return localDate.toISOString().slice(0, 16);
 };
 
 function TodoPage()  {
@@ -541,6 +542,7 @@ if (!currentList) {
                   onChange={(e) => setDueDate(e.target.value)}
                   placeholder="Select date and time"
                   className="p-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-400 dark:bg-gray-700 dark:border-gray-600 dark:text-white"
+                  step="60"
                 />
                 <select
                   value={priority}
@@ -769,7 +771,7 @@ function SortableTask({ id, task, toggleTask, deleteTask, startEdit, onSave, get
 /* Edit Task Form */
 function EditTask({ task, onSave, onCancel }) {
   const [text, setText] = useState(task.text || "");
-  const [due, setDue] = useState(formatDateForInput(task.due));
+  const [due, setDue] = useState(task.due ? formatDateForInput(task.due) : "");
   const [priority, setPriority] = useState(task.priority || "medium");
   const [category, setCategory] = useState(task.category || "General");
   const [repeat, setRepeat] = useState(task.repeat ?? "");
@@ -794,6 +796,7 @@ function EditTask({ task, onSave, onCancel }) {
         onChange={(e) => setDue(e.target.value)}
         placeholder="Select date and time"
         className={inputClasses}
+        step="60"
       />
       <select
         value={priority}
