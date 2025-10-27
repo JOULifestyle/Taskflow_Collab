@@ -6,7 +6,7 @@
 [![Backend Tests](https://github.com/JOULifestyle/Todo-App/actions/workflows/test.yml/badge.svg?branch=main&event=push)](https://github.com/JOULifestyle/Todo-App/actions/workflows/test.yml)
 
 ## 📖 Overview
-**Tasakflow Collab App** is a comprehensive fullstack task management system designed to help individuals and teams efficiently manage their day-to-day activities. It features real-time collaboration, intelligent notifications, cross-device synchronization, and advanced analytics, all powered by modern web technologies.
+**Taskflow Collab App** is a comprehensive fullstack task management system designed to help individuals and teams efficiently manage their day-to-day activities. It features real-time collaboration, intelligent notifications, cross-device synchronization, and advanced analytics, all powered by modern web technologies.
 
 The application allows users to create and manage multiple task lists, share them with team members with role-based permissions, set priorities and due dates, schedule recurring tasks, and receive timely reminders via push notifications. Real-time updates ensure all collaborators stay in sync, while the calendar view and analytics dashboard provide insights into productivity and task distribution.
 
@@ -155,7 +155,7 @@ REACT_APP_API_URL=http://localhost:5000
    ```
 
 4. **Access the Application**
-   - **Live Demo**: https://todo-app-sigma-gilt.vercel.app/
+   - **Live Demo**: https://taskflow-app-sigma-gilt.vercel.app
    - **Local Development**:
      - Frontend: http://localhost:3000
      - Backend API: http://localhost:5000
