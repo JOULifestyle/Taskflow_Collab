@@ -17,9 +17,7 @@ export default function AuthPage() {
       <div className="w-full max-w-md">
         {/* Logo/Brand Section */}
         <div className="text-center mb-8">
-          <div className="inline-flex items-center justify-center w-16 h-16 bg-blue-600 dark:bg-blue-500 rounded-full mb-4 shadow-lg">
-            <span className="text-2xl text-white font-bold">📅</span>
-          </div>
+          <img src="/logo192.png" alt="Taskflow Logo" className="w-16 h-16 mb-4 mx-auto" />
           <h1 className="text-3xl font-bold text-gray-900 dark:text-white mb-2">Taskflow Collab app</h1>
           <p className="text-gray-600 dark:text-gray-300">Organize your tasks, boost your productivity</p>
         </div>
