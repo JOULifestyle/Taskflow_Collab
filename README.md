@@ -1,4 +1,4 @@
-# 📝 Todo-App
+# 📝 Taskflow Collab App
 **A Fullstack Collaborative To-Do Manager**
 
 [![CI/CD](https://github.com/JOULifestyle/Todo-App/actions/workflows/test.yml/badge.svg)](https://github.com/JOULifestyle/Todo-App/actions/workflows/test.yml)
@@ -6,7 +6,7 @@
 [![Backend Tests](https://github.com/JOULifestyle/Todo-App/actions/workflows/test.yml/badge.svg?branch=main&event=push)](https://github.com/JOULifestyle/Todo-App/actions/workflows/test.yml)
 
 ## 📖 Overview
-**Todo-App** is a comprehensive fullstack task management system designed to help individuals and teams efficiently manage their day-to-day activities. It features real-time collaboration, intelligent notifications, cross-device synchronization, and advanced analytics, all powered by modern web technologies.
+**Tasakflow Collab App** is a comprehensive fullstack task management system designed to help individuals and teams efficiently manage their day-to-day activities. It features real-time collaboration, intelligent notifications, cross-device synchronization, and advanced analytics, all powered by modern web technologies.
 
 The application allows users to create and manage multiple task lists, share them with team members with role-based permissions, set priorities and due dates, schedule recurring tasks, and receive timely reminders via push notifications. Real-time updates ensure all collaborators stay in sync, while the calendar view and analytics dashboard provide insights into productivity and task distribution.
 
@@ -134,8 +134,8 @@ REACT_APP_API_URL=http://localhost:5000
 
 1. **Clone the repository**
    ```bash
-   git clone <https://github.com/JOULifestyle/Todo-App.git>
-   cd todo-app
+   git clone <https://github.com/JOULifestyle/Taskflow_Collab>
+   cd rita_dev_work
    ```
 
 2. **Backend Setup**
@@ -185,7 +185,7 @@ The app automatically detects the browser type and manages notifications accordi
 ## 📁 Project Structure
 
 ```
-todo-app/
+rita_dev_work/
 ├── backend/
 │   ├── controllers/     # Route handlers
 │   ├── middleware/      # Authentication & authorization

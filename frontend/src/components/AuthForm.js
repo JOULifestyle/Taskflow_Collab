@@ -13,50 +13,43 @@ export default function AuthForm() {
   const [mode, setMode] = useState("login");
   const [loading, setLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
-  const [errors, setErrors] = useState({});
-  const [authError, setAuthError] = useState("");
   const navigate = useNavigate();
 
   const validateForm = () => {
-    const newErrors = {};
-
     // Email validation
     if (!formData.email.trim()) {
-      newErrors.email = "Email is required";
+      toast.error("Email is required");
+      return false;
     } else if (!/\S+@\S+\.\S+/.test(formData.email)) {
-      newErrors.email = "Please enter a valid email address";
+      toast.error("Please enter a valid email address");
+      return false;
     }
 
     // Password validation
     if (!formData.password) {
-      newErrors.password = "Password is required";
+      toast.error("Password is required");
+      return false;
     } else if (formData.password.length < 6) {
-      newErrors.password = "Password must be at least 6 characters";
+      toast.error("Password must be at least 6 characters");
+      return false;
     }
 
     // Confirm password validation for signup
     if (mode === "signup") {
       if (!formData.confirmPassword) {
-        newErrors.confirmPassword = "Please confirm your password";
+        toast.error("Please confirm your password");
+        return false;
       } else if (formData.password !== formData.confirmPassword) {
-        newErrors.confirmPassword = "Passwords do not match";
+        toast.error("Passwords do not match");
+        return false;
       }
     }
 
-    setErrors(newErrors);
-    return Object.keys(newErrors).length === 0;
+    return true;
   };
 
   const handleInputChange = (field, value) => {
     setFormData(prev => ({ ...prev, [field]: value }));
-    // Clear field-specific error when user starts typing
-    if (errors[field]) {
-      setErrors(prev => ({ ...prev, [field]: "" }));
-    }
-    // Clear auth error when user starts typing
-    if (authError) {
-      setAuthError("");
-    }
   };
 
   const handleSubmit = async (e) => {
@@ -67,7 +60,6 @@ export default function AuthForm() {
     }
 
     setLoading(true);
-    setAuthError(""); // Clear any previous auth errors
 
     try {
       let success;
@@ -85,18 +77,17 @@ export default function AuthForm() {
       // Handle authentication errors specifically
       const errorMessage = err.message || "Authentication failed";
 
-      // Set specific error messages based on common scenarios
+      // Show toast for errors
       if (errorMessage.includes("Invalid credentials") || errorMessage.includes("User not found")) {
-        setAuthError("Invalid email or password. Please check your credentials and try again.");
+        toast.error("Invalid email or password. Please check your credentials and try again.");
       } else if (errorMessage.includes("Username or email already exists")) {
-        setAuthError("An account with this email already exists. Please try logging in instead.");
+        toast.error("An account with this email already exists. Please try logging in instead.");
       } else if (errorMessage.includes("Network error")) {
-        setAuthError("Unable to connect to the server. Please check your internet connection and try again.");
+        toast.error("Unable to connect to the server. Please check your internet connection and try again.");
       } else {
-        setAuthError(errorMessage);
+        toast.error(errorMessage);
       }
 
-      // Don't show toast for auth errors - we show them inline
       console.error("Authentication error:", err);
     } finally {
       setLoading(false);
@@ -105,8 +96,6 @@ export default function AuthForm() {
 
   const toggleMode = () => {
     setMode(mode === "login" ? "signup" : "login");
-    setErrors({});
-    setAuthError(""); // Clear auth errors when switching modes
     setFormData({
       email: formData.email, // Keep email when switching
       password: "",
@@ -129,18 +118,6 @@ export default function AuthForm() {
         </p>
       </div>
 
-      {/* Auth Error Message */}
-      {authError && (
-        <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg p-4">
-          <div className="flex items-center">
-            <svg className="w-5 h-5 text-red-600 dark:text-red-400 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-            </svg>
-            <p className="text-sm text-red-800 dark:text-red-200 font-medium">{authError}</p>
-          </div>
-        </div>
-      )}
-
       <form onSubmit={handleSubmit} className="space-y-6">
         {/* Email Field */}
         <div>
@@ -154,16 +131,9 @@ export default function AuthForm() {
               placeholder="Enter your email"
               value={formData.email}
               onChange={(e) => handleInputChange("email", e.target.value)}
-              className={`w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200 bg-white dark:bg-gray-700 text-gray-900 dark:text-white placeholder-gray-500 dark:placeholder-gray-400 ${
-                errors.email
-                  ? "border-red-300 dark:border-red-500 focus:ring-red-500"
-                  : "border-gray-300 dark:border-gray-600 hover:border-gray-400 dark:hover:border-gray-500"
-              }`}
+              className="w-full px-4 py-3 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200 bg-white dark:bg-gray-700 text-gray-900 dark:text-white placeholder-gray-500 dark:placeholder-gray-400 hover:border-gray-400 dark:hover:border-gray-500"
               disabled={loading}
             />
-            {errors.email && (
-              <p className="mt-1 text-sm text-red-600 dark:text-red-400">{errors.email}</p>
-            )}
           </div>
         </div>
 
@@ -179,11 +149,7 @@ export default function AuthForm() {
               placeholder="Enter your password"
               value={formData.password}
               onChange={(e) => handleInputChange("password", e.target.value)}
-              className={`w-full px-4 py-3 pr-12 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200 bg-white dark:bg-gray-700 text-gray-900 dark:text-white placeholder-gray-500 dark:placeholder-gray-400 ${
-                errors.password
-                  ? "border-red-300 dark:border-red-500 focus:ring-red-500"
-                  : "border-gray-300 dark:border-gray-600 hover:border-gray-400 dark:hover:border-gray-500"
-              }`}
+              className="w-full px-4 py-3 pr-12 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200 bg-white dark:bg-gray-700 text-gray-900 dark:text-white placeholder-gray-500 dark:placeholder-gray-400 hover:border-gray-400 dark:hover:border-gray-500"
               disabled={loading}
             />
             <button
@@ -203,9 +169,6 @@ export default function AuthForm() {
                 </svg>
               )}
             </button>
-            {errors.password && (
-              <p className="mt-1 text-sm text-red-600 dark:text-red-400">{errors.password}</p>
-            )}
           </div>
         </div>
 
@@ -221,16 +184,9 @@ export default function AuthForm() {
               placeholder="Confirm your password"
               value={formData.confirmPassword}
               onChange={(e) => handleInputChange("confirmPassword", e.target.value)}
-              className={`w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200 bg-white dark:bg-gray-700 text-gray-900 dark:text-white placeholder-gray-500 dark:placeholder-gray-400 ${
-                errors.confirmPassword
-                  ? "border-red-300 dark:border-red-500 focus:ring-red-500"
-                  : "border-gray-300 dark:border-gray-600 hover:border-gray-400 dark:hover:border-gray-500"
-              }`}
+              className="w-full px-4 py-3 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200 bg-white dark:bg-gray-700 text-gray-900 dark:text-white placeholder-gray-500 dark:placeholder-gray-400 hover:border-gray-400 dark:hover:border-gray-500"
               disabled={loading}
             />
-            {errors.confirmPassword && (
-              <p className="mt-1 text-sm text-red-600 dark:text-red-400">{errors.confirmPassword}</p>
-            )}
           </div>
         )}
 

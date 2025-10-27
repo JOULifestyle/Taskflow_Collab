@@ -64,15 +64,16 @@ export const AuthProvider = ({ children }) => {
         localStorage.setItem("username", data.username);
         localStorage.setItem("email", data.email || username);
         const payload = decodeJwt(data.token);
-        setUser({ 
-          token: data.token, 
-          username: data.username, 
-          email: data.email || username, 
-          _id: payload?.id 
+        setUser({
+          token: data.token,
+          username: data.username,
+          email: data.email || username,
+          _id: payload?.id
         });
         toast.success("Logged in successfully!");
         return true;
       } else {
+        console.log("Login error:", data.error);
         toast.error(data.error || "Login failed");
         return false;
       }
@@ -97,15 +98,16 @@ export const AuthProvider = ({ children }) => {
         localStorage.setItem("username", data.username);
         localStorage.setItem("email", data.email || username);
         const payload = decodeJwt(data.token);
-        setUser({ 
-          token: data.token, 
-          username: data.username, 
-          email: data.email || username, 
-          _id: payload?.id 
+        setUser({
+          token: data.token,
+          username: data.username,
+          email: data.email || username,
+          _id: payload?.id
         });
         toast.success("Signed up successfully!");
         return true;
       } else {
+        console.log("Signup error:", data.error);
         toast.error(data.error || "Signup failed");
         return false;
       }

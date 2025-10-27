@@ -55,7 +55,7 @@ const InstallPrompt = () => {
     <div className="install-prompt-overlay">
       <div className="install-prompt">
         <div className="install-prompt-content">
-          <h3>Install Todo App</h3>
+          <h3>Install Taskflow Collab App</h3>
           <p>Add this app to your home screen for a better experience!</p>
           <div className="install-prompt-buttons">
             <button onClick={handleInstallClick} className="install-button">
