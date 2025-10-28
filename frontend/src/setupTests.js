@@ -38,6 +38,33 @@ beforeAll(() => {
   global.Notification = jest.fn();
   global.Notification.permission = "granted";
   global.Notification.requestPermission = jest.fn(() => Promise.resolve("granted"));
+
+  // Mock matchMedia
+  Object.defineProperty(window, 'matchMedia', {
+    writable: true,
+    value: jest.fn().mockImplementation(query => ({
+      matches: false,
+      media: query,
+      onchange: null,
+      addListener: jest.fn(),
+      removeListener: jest.fn(),
+      addEventListener: jest.fn(),
+      removeEventListener: jest.fn(),
+      dispatchEvent: jest.fn(),
+    })),
+  });
+
+  // Mock standalone mode checks
+  Object.defineProperty(window.navigator, 'standalone', {
+    writable: true,
+    value: false,
+  });
+
+  // Mock document.referrer
+  Object.defineProperty(document, 'referrer', {
+    value: '',
+    writable: true,
+  });
 });
 
 process.env.TZ = 'Africa/Lagos';
