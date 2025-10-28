@@ -26,6 +26,12 @@ import ShareList from "../components/ShareList";
 
 const API_URL = process.env.REACT_APP_API_URL || "http://localhost:5000";
 
+// Detect mobile devices so the custom placeholder only appears on phones
+const isMobileDevice =
+  typeof navigator !== "undefined" &&
+  /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(
+    navigator.userAgent
+  );
 
 // Format ISO string for display in task list
 const formatDueDate = (isoStr) => {
@@ -576,7 +582,7 @@ if (!currentList) {
                     className="w-full p-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-400 dark:bg-gray-700 dark:border-gray-600 dark:text-white [&::-webkit-calendar-picker-indicator]:dark:invert [&::-webkit-calendar-picker-indicator]:dark:opacity-50"
                     step="60"
                   />
-                  {!dueDate && (
+                  {!dueDate && isMobileDevice && (
                     <span className="absolute left-2 top-1/2 -translate-y-1/2 pointer-events-none text-gray-500 dark:text-gray-400">
                       Select date and time
                     </span>
@@ -836,8 +842,8 @@ function EditTask({ task, onSave, onCancel }) {
           className={inputClasses + " [&::-webkit-calendar-picker-indicator]:dark:invert [&::-webkit-calendar-picker-indicator]:dark:opacity-50"}
           step="60"
         />
-        {!due && (
-          <span className="absolute left-2 top-8 pointer-events-none text-gray-500 dark:text-gray-400">
+        {!due && isMobileDevice && (
+          <span className="absolute left-2 top-1/2 -translate-y-1/2 pointer-events-none text-gray-500 dark:text-gray-400">
             Select date and time
           </span>
         )}
