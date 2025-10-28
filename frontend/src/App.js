@@ -29,11 +29,14 @@ export default function App() {
       }
     };
 
-    navigator.serviceWorker.addEventListener('message', handleServiceWorkerUpdate);
+    // Check if service worker is supported and available
+    if ('serviceWorker' in navigator && navigator.serviceWorker) {
+      navigator.serviceWorker.addEventListener('message', handleServiceWorkerUpdate);
 
-    return () => {
-      navigator.serviceWorker.removeEventListener('message', handleServiceWorkerUpdate);
-    };
+      return () => {
+        navigator.serviceWorker.removeEventListener('message', handleServiceWorkerUpdate);
+      };
+    }
   }, []);
 
   // Request notification permission for fallback notifications

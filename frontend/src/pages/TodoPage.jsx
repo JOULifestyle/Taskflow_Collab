@@ -577,7 +577,7 @@ if (!currentList) {
                     step="60"
                   />
                   {!dueDate && (
-                    <span className="absolute left-2 top-8 pointer-events-none text-gray-500 dark:text-gray-400">
+                    <span className="absolute left-2 top-1/2 -translate-y-1/2 pointer-events-none text-gray-500 dark:text-gray-400">
                       Select date and time
                     </span>
                   )}
