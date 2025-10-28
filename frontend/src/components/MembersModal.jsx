@@ -16,8 +16,6 @@ export default function MembersModal({ list, token, onClose, currentUser }) {
   const [inviteRole, setInviteRole] = useState("viewer");
 
   useEffect(() => {
-  console.log("🔎 CurrentUser:", currentUser);
-  console.log("🔎 Members:", members);
 }, [currentUser, members]);
 
   // Fetch members

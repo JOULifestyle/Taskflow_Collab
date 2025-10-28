@@ -7,17 +7,14 @@ const InstallPrompt = () => {
 
   useEffect(() => {
     const handleBeforeInstallPrompt = (e) => {
-      console.log('[PWA] beforeinstallprompt event fired');
       // Prevent the mini-infobar from appearing on mobile
       e.preventDefault();
       // Stash the event so it can be triggered later
       setDeferredPrompt(e);
       setShowPrompt(true);
-      console.log('[PWA] Install prompt available');
     };
 
     const handleAppInstalled = (e) => {
-      console.log('[PWA] App installed successfully');
       setShowPrompt(false);
     };
 
@@ -36,11 +33,10 @@ const InstallPrompt = () => {
     // Show the install prompt
     deferredPrompt.prompt();
 
-    // Wait for the user to respond to the prompt
-    const { outcome } = await deferredPrompt.userChoice;
-    console.log(`[PWA] User response to install prompt: ${outcome}`);
-
-    // Clear the deferred prompt
+        // Wait for the user to respond to the prompt
+        const { outcome } = await deferredPrompt.userChoice;
+    
+        // Clear the deferred prompt
     setDeferredPrompt(null);
     setShowPrompt(false);
   };

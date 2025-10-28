@@ -1,6 +1,6 @@
 
 const CACHE_NAME = "todo-app-cache-v3";
-const APP_VERSION = "1.0.0"; // Match this with manifest.json
+const APP_VERSION = "1.0.0"; 
 const ASSETS_TO_CACHE = [
   "/",
   "/index.html",
@@ -16,14 +16,14 @@ const ASSETS_TO_CACHE = [
 self.addEventListener("install", (event) => {
   console.log("📥 Installing service worker...");
 
-  self.skipWaiting(); // Activate immediately
+  self.skipWaiting(); 
 
   event.waitUntil(
     caches.open(CACHE_NAME).then((cache) => {
       console.log("🗂️ Caching static assets...");
       return cache.addAll(ASSETS_TO_CACHE).catch((err) => {
         console.error("❌ Failed to cache assets:", err);
-        // Don't throw error - allow SW to install even if caching fails
+        
       });
     })
   );

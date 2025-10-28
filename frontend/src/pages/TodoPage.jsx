@@ -44,8 +44,6 @@ const formatDueDate = (isoStr) => {
 const formatDateForInput = (dateStr) => {
   if (!dateStr) return "";
   const d = new Date(dateStr);
-  // datetime-local input expects local time in YYYY-MM-DDThh:mm format
-  // pad with leading zeros where needed
   const year = d.getFullYear();
   const month = String(d.getMonth() + 1).padStart(2, '0');
   const day = String(d.getDate()).padStart(2, '0');
@@ -176,10 +174,6 @@ const urlBase64ToUint8Array = (base64String) => {
 
   // DnD sensors
   const sensors = useSensors(useSensor(PointerSensor));
-
-  // Task loading is now handled by useTasks hook
-
-    // Task persistence is now handled by useTasks hook
 
 
   const handleDragEnd = async (event) => {

@@ -45,7 +45,7 @@ function registerTaskHandlers(io, socket) {
         listId,
         text,
         completed: false,
-        ...rest, // allow optional fields like due, priority, etc.
+        ...rest, 
       });
 
       io.to(`list:${listId}`).emit("task:created", task);

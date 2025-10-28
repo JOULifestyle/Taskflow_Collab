@@ -3,7 +3,6 @@ import toast from "react-hot-toast";
 
 const AuthContext = createContext();
 
-// Base API URL (use .env or fallback to localhost)
 const API_BASE_URL = process.env.REACT_APP_API_URL || "http://localhost:5000";
 
 function decodeJwt(token) {
@@ -36,10 +35,9 @@ export const AuthProvider = ({ children }) => {
       const payload = decodeJwt(token);
 
       // Check if token is expired
-      if (payload?.exp && Date.now() >= payload.exp * 1000) {
-        console.warn("Token expired, logging out");
-        logout();
-      } else {
+            if (payload?.exp && Date.now() >= payload.exp * 1000) {
+              logout();
+            } else {
         setUser({
           token,
           username,
@@ -73,7 +71,6 @@ export const AuthProvider = ({ children }) => {
         toast.success("Logged in successfully!");
         return true;
       } else {
-        console.log("Login error:", data.error);
         toast.error(data.error || "Login failed");
         return false;
       }
@@ -107,7 +104,6 @@ export const AuthProvider = ({ children }) => {
         toast.success("Signed up successfully!");
         return true;
       } else {
-        console.log("Signup error:", data.error);
         toast.error(data.error || "Signup failed");
         return false;
       }

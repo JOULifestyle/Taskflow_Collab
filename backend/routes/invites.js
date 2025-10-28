@@ -21,18 +21,18 @@ router.post("/accept", auth, async (req, res) => {
 
     const { listId, email, role } = inviteData;
 
-    // STEP 1 — Find list first
+    
     const list = await List.findById(listId);
     if (!list) {
       return res.status(404).json({ error: "List not found" });
     }
 
-    // STEP 2 — Ensure user email exists
+    
     if (!req.user?.email) {
       return res.status(401).json({ error: "User email not found in request" });
     }
 
-    // STEP 3 — Check if already a member (400)
+    
     const existingMember = list.members.find(
       (m) => String(m.userId) === String(req.user.id)
     );
@@ -40,12 +40,12 @@ router.post("/accept", auth, async (req, res) => {
       return res.status(400).json({ error: "You are already a member of this list" });
     }
 
-    // STEP 4 — Check email mismatch (403)
+    
     if (req.user.email.toLowerCase() !== email.toLowerCase()) {
       return res.status(403).json({ error: "This invitation is not for you" });
     }
 
-    // STEP 5 — Add user to list
+    
     list.members.push({ userId: req.user.id, role });
     await list.save();
 

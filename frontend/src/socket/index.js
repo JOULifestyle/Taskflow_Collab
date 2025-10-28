@@ -61,7 +61,7 @@ export function leaveList(listId) {
   }
 }
 
-// NEW: listen for member updates/removals 
+// listen for member updates/removals 
 export function onMemberEvents({ onShared, onRemoved }) {
   if (!socket) return;
 

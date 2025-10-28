@@ -24,9 +24,7 @@ root.render(
 );
 
 // Register service worker
-console.log(`[PWA] Unregistering old service worker and registering new one...`);
 serviceWorkerRegistration.unregister().then(() => {
-  console.log('[PWA] Unregister completed, now registering new SW');
   serviceWorkerRegistration.register();
 }).catch((error) => {
   console.error('[PWA] Error during SW unregister/register process:', error);
@@ -34,29 +32,17 @@ serviceWorkerRegistration.unregister().then(() => {
 
 // Listen for messages from service worker
 if ("serviceWorker" in navigator) {
-  console.log(`[PWA] Setting up service worker message listener`);
   navigator.serviceWorker.addEventListener("message", (event) => {
-    console.log(`[PWA] Received message from SW:`, event.data);
     if (event.data?.type === "NEW_VERSION_AVAILABLE") {
       alert("🚀 A new version is available. Please refresh to update!");
     }
   });
-} else {
-  console.log(`[PWA] Service worker not supported in this browser`);
 }
 
 // Check PWA installation criteria
-console.log(`[PWA] Checking PWA installation criteria...`);
-console.log(`[PWA] HTTPS: ${window.location.protocol === 'https:'}`);
-console.log(`[PWA] Service Worker: ${'serviceWorker' in navigator}`);
-console.log(`[PWA] Manifest: ${!!document.querySelector('link[rel="manifest"]')}`);
-console.log(`[PWA] Display mode: ${window.matchMedia('(display-mode: standalone)').matches ? 'standalone' : 'browser'}`);
-console.log(`[PWA] BeforeInstallPrompt event supported: ${'onbeforeinstallprompt' in window}`);
-console.log(`[PWA] UserAgent: ${navigator.userAgent}`);
 
 // Listen for appinstalled event
 window.addEventListener('appinstalled', (e) => {
-  console.log(`[PWA] App installed successfully`);
 });
 
 reportWebVitals();

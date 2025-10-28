@@ -20,14 +20,12 @@ export const SocketProvider = ({ children }) => {
 
     if (s) {
       // listen for connect event before setting
-      s.on("connect", () => {
-        console.log("✅ Socket connected:", s.id);
-        setSocket(s);
-      });
-
-      s.on("connect_error", (err) => {
-        console.error("❌ Socket connection error:", err.message);
-      });
+            s.on("connect", () => {
+              setSocket(s);
+            });
+      
+            s.on("connect_error", (err) => {
+            });
 
       // cleanup only this socket
       return () => {
@@ -36,7 +34,6 @@ export const SocketProvider = ({ children }) => {
         }
       };
     } else {
-      console.error("❌ Failed to create socket");
       setSocket(null);
     }
   }, [user?.token]);
