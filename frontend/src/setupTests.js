@@ -32,6 +32,13 @@ global.localStorage = {
   clear: jest.fn(),
 };
 
+// Ensure window and navigator are defined
+global.window = Object.create(window);
+Object.defineProperty(window, 'location', {
+  value: {
+    href: 'http://localhost',
+  },
+});
 
 beforeAll(() => {
   Object.defineProperty(document, "hidden", { value: false, writable: true });
@@ -39,8 +46,24 @@ beforeAll(() => {
   global.Notification.permission = "granted";
   global.Notification.requestPermission = jest.fn(() => Promise.resolve("granted"));
 
-  // Mock matchMedia
-  Object.defineProperty(window, 'matchMedia', {
+  // Mock matchMedia directly on window
+  window.matchMedia = jest.fn().mockImplementation(query => ({
+    matches: false,
+    media: query,
+    onchange: null,
+    addListener: jest.fn(),
+    removeListener: jest.fn(),
+    addEventListener: jest.fn(),
+    removeEventListener: jest.fn(),
+    dispatchEvent: jest.fn(),
+  }));
+
+  // Mock navigator if needed
+  if (!window.navigator) {
+    window.navigator = {};
+  }
+
+  Object.defineProperty(window.navigator, 'standalone', {
     writable: true,
     value: jest.fn().mockImplementation(query => ({
       matches: false,
