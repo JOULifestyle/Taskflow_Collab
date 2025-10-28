@@ -33,7 +33,7 @@ global.localStorage = {
 };
 
 // Ensure window and navigator are defined
-global.window = Object.create(window);
+global.window = global.window || {};
 Object.defineProperty(window, 'location', {
   value: {
     href: 'http://localhost',
