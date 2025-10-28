@@ -5,6 +5,9 @@ import { useLists } from "../hooks/useLists";
 import { useCollaborativeTasks } from "../hooks/useCollaborativeTasks";
 import { useAuth } from "../context/AuthContext";
 import { useSocket } from "../context/SocketProvider";
+import { useNotificationSetup } from "../hooks/useNotificationSetup";
+import NotificationBanner from "../components/NotificationBanner";
+import IOSInstallBanner from "../components/IOSInstallBanner";
 import {
   DndContext,
   closestCenter,
@@ -58,6 +61,13 @@ function TodoPage()  {
   const { lists, currentList, selectList, createList, updateListName, deleteList, loading: listsLoading } = useLists();
   const { tasks, addTask, toggleTask, deleteTask, startEdit, saveEdit, setTasks } =
     useTasks(currentList?._id);
+  const {
+    showNotificationBanner,
+    showIOSInstallBanner,
+    requestNotificationPermission,
+    dismissNotificationBanner,
+    dismissInstallBanner
+  } = useNotificationSetup();
 
   // Determine user's role for current list
   const userRole = currentList?.members?.find(m => m.userId === user?._id)?.role || 'viewer';
@@ -100,7 +110,10 @@ useCollaborativeTasks(setTasks);
 
 useEffect(() => {
   const registerPush = async () => {
-    if (!("serviceWorker" in navigator) || !("PushManager" in window)) return;
+    if (!("serviceWorker" in navigator) || !("PushManager" in window)) {
+      console.log('Push notifications are not supported in this browser/device');
+      return;
+    }
 
     const swReg = await navigator.serviceWorker.register("/service-worker.js");
     const permission = await Notification.requestPermission();
@@ -415,6 +428,15 @@ if (!currentList) {
   return (
     <>
       <Toaster />
+      {showNotificationBanner && (
+        <NotificationBanner
+          onEnable={requestNotificationPermission}
+          onDismiss={dismissNotificationBanner}
+        />
+      )}
+      {showIOSInstallBanner && (
+        <IOSInstallBanner onDismiss={dismissInstallBanner} />
+      )}
 
       {false ? (
         <div className="flex justify-center items-center py-6">
