@@ -26,12 +26,25 @@ import ShareList from "../components/ShareList";
 
 const API_URL = process.env.REACT_APP_API_URL || "http://localhost:5000";
 
-// Detect mobile devices so the custom placeholder only appears on phones
-const isMobileDevice =
-  typeof navigator !== "undefined" &&
-  /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(
-    navigator.userAgent
-  );
+// Detect mobile / touch devices so the custom placeholder only appears on phones
+// Prefer feature-detection using matchMedia (pointer: coarse) and fall back to UA sniffing
+const isMobileDevice = (() => {
+  try {
+    if (typeof window !== "undefined" && typeof window.matchMedia === "function") {
+      if (window.matchMedia("(pointer: coarse)").matches) return true;
+    }
+  } catch (e) {
+    // ignore
+  }
+
+  if (typeof navigator !== "undefined") {
+    return /Android|webOS|iPhone|iPod|BlackBerry|IEMobile|Opera Mini/i.test(
+      navigator.userAgent
+    );
+  }
+
+  return false;
+})();
 
 // Format ISO string for display in task list
 const formatDueDate = (isoStr) => {
