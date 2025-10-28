@@ -1,6 +1,7 @@
 {
-  "short_name": "Todo App",
-  "name": "My To-Do Application",
+  "short_name": "Taskflow",
+  "name": "Taskflow Collab",
+  "version": "1.0.0",
   "icons": [
     {
       "src": "favicon.ico",

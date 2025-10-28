@@ -1,5 +1,6 @@
 
-const CACHE_NAME = "todo-app-cache-v2";
+const CACHE_NAME = "todo-app-cache-v3";
+const APP_VERSION = "1.0.0"; // Match this with manifest.json
 const ASSETS_TO_CACHE = [
   "/",
   "/index.html",

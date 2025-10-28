@@ -569,9 +569,6 @@ if (!currentList) {
                   className="p-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-400 dark:bg-gray-700 dark:border-gray-600 dark:text-white"
                 />
                 <div className="relative">
-                  <label className="block text-sm text-gray-600 dark:text-gray-400 mb-1">
-                    Due Date & Time
-                  </label>
                   <input
                     type="datetime-local"
                     value={dueDate}

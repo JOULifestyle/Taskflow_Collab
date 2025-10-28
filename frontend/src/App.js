@@ -19,6 +19,22 @@ export default function App() {
 
   const [dark, setDark] = useState(false);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+  const [updateAvailable, setUpdateAvailable] = useState(false);
+
+  useEffect(() => {
+    // Listen for service worker update messages
+    const handleServiceWorkerUpdate = (event) => {
+      if (event.data?.type === 'NEW_VERSION_AVAILABLE') {
+        setUpdateAvailable(true);
+      }
+    };
+
+    navigator.serviceWorker.addEventListener('message', handleServiceWorkerUpdate);
+
+    return () => {
+      navigator.serviceWorker.removeEventListener('message', handleServiceWorkerUpdate);
+    };
+  }, []);
 
   // Request notification permission for fallback notifications
   useEffect(() => {
@@ -33,6 +49,19 @@ export default function App() {
     <Layout dark={dark}>
       {/* PWA Install Prompt */}
       <InstallPrompt />
+
+      {/* Update notification */}
+      {updateAvailable && (
+        <div className="fixed top-0 left-0 right-0 bg-blue-500 text-white p-4 flex justify-between items-center z-50">
+          <p>A new version is available!</p>
+          <button
+            onClick={() => window.location.reload()}
+            className="bg-white text-blue-500 px-4 py-2 rounded hover:bg-blue-50"
+          >
+            Update Now
+          </button>
+        </div>
+      )}
 
       {/* Fixed Nav */}
       <nav className="fixed top-0 left-0 w-full p-4 bg-white/80 backdrop-blur-md shadow-md z-10">
