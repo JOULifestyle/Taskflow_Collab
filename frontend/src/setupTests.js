@@ -32,22 +32,23 @@ global.localStorage = {
   clear: jest.fn(),
 };
 
-// Ensure window and navigator are defined
-global.window = global.window || {};
+// Ensure window is defined globally
+if (typeof window === 'undefined') {
+  global.window = {};
+}
+
+// Set up basic window properties
 Object.defineProperty(window, 'location', {
   value: {
     href: 'http://localhost',
   },
+  writable: true,
 });
 
-beforeAll(() => {
-  Object.defineProperty(document, "hidden", { value: false, writable: true });
-  global.Notification = jest.fn();
-  global.Notification.permission = "granted";
-  global.Notification.requestPermission = jest.fn(() => Promise.resolve("granted"));
-
-  // Mock matchMedia directly on window
-  window.matchMedia = jest.fn().mockImplementation(query => ({
+// Mock matchMedia globally before any imports
+Object.defineProperty(window, 'matchMedia', {
+  writable: true,
+  value: jest.fn().mockImplementation(query => ({
     matches: false,
     media: query,
     onchange: null,
@@ -56,7 +57,15 @@ beforeAll(() => {
     addEventListener: jest.fn(),
     removeEventListener: jest.fn(),
     dispatchEvent: jest.fn(),
-  }));
+  })),
+});
+
+beforeAll(() => {
+  Object.defineProperty(document, "hidden", { value: false, writable: true });
+  global.Notification = jest.fn();
+  global.Notification.permission = "granted";
+  global.Notification.requestPermission = jest.fn(() => Promise.resolve("granted"));
+
 
   // Mock navigator if needed
   if (!window.navigator) {
@@ -77,11 +86,6 @@ beforeAll(() => {
     })),
   });
 
-  // Mock standalone mode checks
-  Object.defineProperty(window.navigator, 'standalone', {
-    writable: true,
-    value: false,
-  });
 
   // Mock document.referrer
   Object.defineProperty(document, 'referrer', {

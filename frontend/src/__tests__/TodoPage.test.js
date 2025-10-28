@@ -3,6 +3,21 @@ import React from "react";
 import { render, screen } from "@testing-library/react";
 import TodoPage from "../pages/TodoPage";
 
+// Mock matchMedia globally before any imports
+Object.defineProperty(window, 'matchMedia', {
+  writable: true,
+  value: jest.fn().mockImplementation(query => ({
+    matches: false,
+    media: query,
+    onchange: null,
+    addListener: jest.fn(),
+    removeListener: jest.fn(),
+    addEventListener: jest.fn(),
+    removeEventListener: jest.fn(),
+    dispatchEvent: jest.fn(),
+  })),
+});
+
 //  Mock all hooks used inside TodoPage
 jest.mock("../context/AuthContext", () => ({
   useAuth: () => ({ user: { _id: "1", name: "Test User" } }),
@@ -40,6 +55,16 @@ jest.mock("../hooks/useCollaborativeTasks", () => ({
   useCollaborativeTasks: jest.fn(),
 }));
 
+jest.mock("../hooks/useNotificationSetup", () => ({
+  useNotificationSetup: () => ({
+    showNotificationBanner: false,
+    showIOSInstallBanner: false,
+    requestNotificationPermission: jest.fn(),
+    dismissNotificationBanner: jest.fn(),
+    dismissInstallBanner: jest.fn(),
+  }),
+}));
+
 //  Stub browser APIs used in effects
 beforeAll(() => {
   global.fetch = jest.fn(() => Promise.resolve({ json: () => Promise.resolve({ publicKey: "mock-key" }) }));
@@ -47,20 +72,6 @@ beforeAll(() => {
   global.navigator.serviceWorker = { register: jest.fn(() => Promise.resolve({ pushManager: { subscribe: jest.fn() } })) };
   global.localStorage = { getItem: jest.fn(), setItem: jest.fn() };
   
-  // Mock matchMedia
-  Object.defineProperty(window, 'matchMedia', {
-    writable: true,
-    value: jest.fn().mockImplementation(query => ({
-      matches: false,
-      media: query,
-      onchange: null,
-      addListener: jest.fn(),
-      removeListener: jest.fn(),
-      addEventListener: jest.fn(),
-      removeEventListener: jest.fn(),
-      dispatchEvent: jest.fn(),
-    })),
-  });
 });
 
 describe("TodoPage", () => {
