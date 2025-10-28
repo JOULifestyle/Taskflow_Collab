@@ -75,10 +75,18 @@ describe('useTasks', () => {
     const mockTasks = [{ _id: 'task1', text: 'Test task' }];
     localStorage.getItem.mockReturnValue(JSON.stringify(mockTasks));
 
-    const { result } = renderHook(() => useTasks('list1'));
+    mockFetch.mockResolvedValueOnce({
+      ok: true,
+      json: () => Promise.resolve(mockTasks)
+    });
+
+    let result;
+    await act(async () => {
+      result = renderHook(() => useTasks('list1'));
+    });
 
     await waitFor(() => {
-      expect(result.current.tasks).toEqual([
+      expect(result.result.current.tasks).toEqual([
         { _id: 'task1', text: 'Test task', repeat: null, category: 'General', priority: 'normal' }
       ]);
     });
@@ -93,10 +101,15 @@ describe('useTasks', () => {
       json: () => Promise.resolve(mockApiTasks)
     });
 
-    const { result } = renderHook(() => useTasks('list1'));
+    let result;
+    await act(async () => {
+      result = renderHook(() => useTasks('list1'));
+    });
 
-    await waitFor(() => {
-      expect(result.current.loading).toBe(false);
+    await act(async () => {
+      await waitFor(() => {
+        expect(result.result.current.loading).toBe(false);
+      });
     });
 
     expect(mockFetch).toHaveBeenCalledWith(
@@ -117,10 +130,15 @@ describe('useTasks', () => {
       json: () => Promise.resolve(apiTasks)
     });
 
-    const { result } = renderHook(() => useTasks('list1'));
+    let result;
+    await act(async () => {
+      result = renderHook(() => useTasks('list1'));
+    });
 
-    await waitFor(() => {
-      expect(result.current.tasks).toHaveLength(1); // API tasks replace local tasks
+    await act(async () => {
+      await waitFor(() => {
+        expect(result.result.current.tasks).toHaveLength(1); // API tasks replace local tasks
+      });
     });
   });
 
@@ -230,28 +248,43 @@ describe('useTasks', () => {
     // Simulate offline
     Object.defineProperty(navigator, 'onLine', { value: false });
 
-    const { result } = renderHook(() => useTasks('list1'));
+    mockFetch.mockResolvedValueOnce({
+      ok: true,
+      json: () => Promise.resolve([])
+    });
+
+    let result;
+    await act(async () => {
+      result = renderHook(() => useTasks('list1'));
+    });
 
     await act(async () => {
-      await result.current.addTask('Offline task', null, 'medium', 'General');
+      await result.result.current.addTask('Offline task', null, 'medium', 'General');
     });
 
     // Should add to queue instead of making API call
-    expect(result.current.queue).toHaveLength(1);
+    expect(result.result.current.queue).toHaveLength(1);
     expect(mockFetch).toHaveBeenCalledTimes(1); // Initial fetch still happens
   });
 
-  test('listens for socket task updates', () => {
+  test('listens for socket task updates', async () => {
     const mockUpdatedTask = { _id: 'task1', text: 'Updated task' };
 
-    renderHook(() => useTasks('list1'));
+    mockFetch.mockResolvedValueOnce({
+      ok: true,
+      json: () => Promise.resolve([])
+    });
+
+    await act(async () => {
+      renderHook(() => useTasks('list1'));
+    });
 
     // Simulate socket event
     const updateHandler = mockSocket.on.mock.calls.find(
       call => call[0] === 'task:updated'
     )[1];
 
-    act(() => {
+    await act(async () => {
       updateHandler(mockUpdatedTask);
     });
 
@@ -267,10 +300,14 @@ describe('useTasks', () => {
       json: () => Promise.resolve([])
     });
 
-    renderHook(() => useTasks('list1'));
+    await act(async () => {
+      renderHook(() => useTasks('list1'));
+    });
 
-    // Fast-forward 30 seconds
-    jest.advanceTimersByTime(30000);
+    await act(async () => {
+      // Fast-forward 30 seconds
+      jest.advanceTimersByTime(30000);
+    });
 
     await waitFor(() => {
       expect(mockFetch).toHaveBeenCalledTimes(2); // Initial + refresh

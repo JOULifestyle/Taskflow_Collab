@@ -21,10 +21,12 @@ export const SocketProvider = ({ children }) => {
     if (s) {
       // listen for connect event before setting
             s.on("connect", () => {
+              console.log('✅ Socket connected:', s.id);
               setSocket(s);
             });
       
             s.on("connect_error", (err) => {
+              console.error('❌ Socket connection error:', err.message);
             });
 
       // cleanup only this socket
