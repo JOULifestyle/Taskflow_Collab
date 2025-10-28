@@ -568,14 +568,23 @@ if (!currentList) {
                   placeholder="New task"
                   className="p-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-400 dark:bg-gray-700 dark:border-gray-600 dark:text-white"
                 />
-                <input
-                  type="datetime-local"
-                  value={dueDate}
-                  onChange={(e) => setDueDate(e.target.value)}
-                  placeholder="Select date and time"
-                  className="p-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-400 dark:bg-gray-700 dark:border-gray-600 dark:text-white"
-                  step="60"
-                />
+                <div className="relative">
+                  <label className="block text-sm text-gray-600 dark:text-gray-400 mb-1">
+                    Due Date & Time
+                  </label>
+                  <input
+                    type="datetime-local"
+                    value={dueDate}
+                    onChange={(e) => setDueDate(e.target.value)}
+                    className="w-full p-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-400 dark:bg-gray-700 dark:border-gray-600 dark:text-white [&::-webkit-calendar-picker-indicator]:dark:invert [&::-webkit-calendar-picker-indicator]:dark:opacity-50"
+                    step="60"
+                  />
+                  {!dueDate && (
+                    <span className="absolute left-2 top-8 pointer-events-none text-gray-500 dark:text-gray-400">
+                      Select date and time
+                    </span>
+                  )}
+                </div>
                 <select
                   value={priority}
                   onChange={(e) => setPriority(e.target.value)}
@@ -822,14 +831,23 @@ function EditTask({ task, onSave, onCancel }) {
         onChange={(e) => setText(e.target.value)}
         className={inputClasses}
       />
-      <input
-        type="datetime-local"
-        value={due}
-        onChange={(e) => setDue(e.target.value)}
-        placeholder="Select date and time"
-        className={inputClasses}
-        step="60"
-      />
+      <div className="relative">
+        <label className="block text-sm text-gray-600 dark:text-gray-400 mb-1">
+          Due Date & Time
+        </label>
+        <input
+          type="datetime-local"
+          value={due}
+          onChange={(e) => setDue(e.target.value)}
+          className={inputClasses + " [&::-webkit-calendar-picker-indicator]:dark:invert [&::-webkit-calendar-picker-indicator]:dark:opacity-50"}
+          step="60"
+        />
+        {!due && (
+          <span className="absolute left-2 top-8 pointer-events-none text-gray-500 dark:text-gray-400">
+            Select date and time
+          </span>
+        )}
+      </div>
       <select
         value={priority}
         onChange={(e) => setPriority(e.target.value)}
