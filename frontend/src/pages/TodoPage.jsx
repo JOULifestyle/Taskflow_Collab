@@ -26,26 +26,6 @@ import ShareList from "../components/ShareList";
 
 const API_URL = process.env.REACT_APP_API_URL || "http://localhost:5000";
 
-// Detect mobile / touch devices so the custom placeholder only appears on phones
-// Prefer feature-detection using matchMedia (pointer: coarse) and fall back to UA sniffing
-const isMobileDevice = (() => {
-  try {
-    if (typeof window !== "undefined" && typeof window.matchMedia === "function") {
-      if (window.matchMedia("(pointer: coarse)").matches) return true;
-    }
-  } catch (e) {
-    // ignore
-  }
-
-  if (typeof navigator !== "undefined") {
-    return /Android|webOS|iPhone|iPod|BlackBerry|IEMobile|Opera Mini/i.test(
-      navigator.userAgent
-    );
-  }
-
-  return false;
-})();
-
 // Format ISO string for display in task list
 const formatDueDate = (isoStr) => {
   if (!isoStr) return "";
@@ -588,6 +568,7 @@ if (!currentList) {
                   className="p-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-400 dark:bg-gray-700 dark:border-gray-600 dark:text-white"
                 />
                 <div className="relative">
+                  <label className="block text-sm text-gray-600 dark:text-gray-400 mb-1">Due Date &amp; Time</label>
                   <input
                     type="datetime-local"
                     value={dueDate}
@@ -595,11 +576,6 @@ if (!currentList) {
                     className="w-full p-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-400 dark:bg-gray-700 dark:border-gray-600 dark:text-white [&::-webkit-calendar-picker-indicator]:dark:invert [&::-webkit-calendar-picker-indicator]:dark:opacity-50"
                     step="60"
                   />
-                  {!dueDate && isMobileDevice && (
-                    <span className="absolute left-2 top-1/2 -translate-y-1/2 pointer-events-none text-gray-500 dark:text-gray-400">
-                      Select date and time
-                    </span>
-                  )}
                 </div>
                 <select
                   value={priority}
@@ -848,6 +824,7 @@ function EditTask({ task, onSave, onCancel }) {
         className={inputClasses}
       />
       <div className="relative">
+        <label className="block text-sm text-gray-600 dark:text-gray-400 mb-1">Due Date &amp; Time</label>
         <input
           type="datetime-local"
           value={due}
@@ -855,11 +832,6 @@ function EditTask({ task, onSave, onCancel }) {
           className={inputClasses + " [&::-webkit-calendar-picker-indicator]:dark:invert [&::-webkit-calendar-picker-indicator]:dark:opacity-50"}
           step="60"
         />
-        {!due && isMobileDevice && (
-          <span className="absolute left-2 top-1/2 -translate-y-1/2 pointer-events-none text-gray-500 dark:text-gray-400">
-            Select date and time
-          </span>
-        )}
       </div>
       <select
         value={priority}
