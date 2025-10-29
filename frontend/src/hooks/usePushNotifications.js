@@ -1,24 +1,32 @@
 import { useEffect } from "react";
 
-// Enhanced iOS diagnostic logging
+// Safe iOS diagnostic logging - wrapped in try/catch to prevent crashes
 const debugLog = (level, message, data = {}) => {
-  const timestamp = new Date().toISOString();
-  const logEntry = {
-    timestamp,
-    level,
-    message,
-    data,
-    userAgent: navigator.userAgent,
-    isIOS: /iPad|iPhone|iPod/.test(navigator.userAgent),
-    isStandalone: window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone,
-    notificationPermission: Notification.permission,
-    serviceWorkerSupported: 'serviceWorker' in navigator,
-    pushManagerSupported: 'PushManager' in window
-  };
-  
-  console.log(`[iOS DEBUG ${level}]`, message, logEntry);
-  // Store in sessionStorage for debugging
-  sessionStorage.setItem(`ios_debug_${Date.now()}`, JSON.stringify(logEntry));
+  try {
+    const timestamp = new Date().toISOString();
+    const logEntry = {
+      timestamp,
+      level,
+      message,
+      data,
+      userAgent: navigator.userAgent,
+      isIOS: /iPad|iPhone|iPod/.test(navigator.userAgent),
+      isStandalone: window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone,
+      notificationPermission: Notification.permission,
+      serviceWorkerSupported: 'serviceWorker' in navigator,
+      pushManagerSupported: 'PushManager' in window
+    };
+    
+    console.log(`[iOS DEBUG ${level}]`, message, logEntry);
+    
+    // Safely store in sessionStorage
+    if (typeof sessionStorage !== 'undefined') {
+      sessionStorage.setItem(`ios_debug_${Date.now()}`, JSON.stringify(logEntry));
+    }
+  } catch (error) {
+    // Silently fail to prevent app crashes
+    console.log('[iOS DEBUG] Logging failed:', error.message);
+  }
 };
 
 const API_URL = process.env.REACT_APP_API_URL || "http://localhost:5000";
@@ -46,13 +54,20 @@ function urlBase64ToUint8Array(base64String) {
 
 export function usePushNotifications(token) {
   useEffect(() => {
-    debugLog('INFO', 'usePushNotifications effect starting', { token: !!token });
+    // Guard against missing token or environment
+    if (!token) {
+      console.log('[Push Notifications] No token available');
+      return;
+    }
 
-    if (!token || !("serviceWorker" in navigator) || !("PushManager" in window)) {
-      debugLog('ERROR', 'Missing prerequisites for push notifications', {
-        hasToken: !!token,
-        hasServiceWorker: "serviceWorker" in navigator,
-        hasPushManager: "PushManager" in window
+    // Safe environment checks
+    const hasServiceWorker = typeof navigator !== 'undefined' && 'serviceWorker' in navigator;
+    const hasPushManager = typeof window !== 'undefined' && 'PushManager' in window;
+
+    if (!hasServiceWorker || !hasPushManager) {
+      console.log('[Push Notifications] Missing prerequisites', {
+        hasServiceWorker,
+        hasPushManager
       });
       return;
     }
@@ -76,210 +91,161 @@ export function usePushNotifications(token) {
     }
 
     if (isSafari) {
-      debugLog('WARN', 'Safari browser detected - iOS push notifications have known issues');
-    }
-
-    async function waitForActiveSW() {
-      debugLog('INFO', 'Waiting for active service worker');
-      const reg = await navigator.serviceWorker.ready;
-
-      debugLog('INFO', 'Service worker ready', {
-        state: reg.active?.state,
-        scope: reg.scope
-      });
-
-      if (reg.active?.state !== "activated") {
-        debugLog('WARN', 'Service worker not activated yet, waiting...');
-        await new Promise((resolve, reject) => {
-          const timeout = setTimeout(() => {
-            reject(new Error("SW activation timeout"));
-          }, 10000);
-
-          reg.active.addEventListener("statechange", (e) => {
-            debugLog('INFO', 'Service worker state changed', { newState: e.target.state });
-            if (e.target.state === "activated") {
-              clearTimeout(timeout);
-              resolve();
+          console.log('[Push Notifications] Safari browser detected');
+        }
+    
+        async function waitForActiveSW() {
+          console.log('[Push Notifications] Waiting for service worker');
+          try {
+            const reg = await navigator.serviceWorker.ready;
+    
+            console.log('[Push Notifications] Service worker ready', {
+              state: reg.active?.state,
+              scope: reg.scope
+            });
+    
+            if (reg.active?.state !== "activated") {
+              console.log('[Push Notifications] Service worker not activated yet');
+              return new Promise((resolve, reject) => {
+                const timeout = setTimeout(() => {
+                  resolve(reg); // Resolve instead of reject to prevent crashes
+                }, 10000);
+    
+                reg.active.addEventListener("statechange", (e) => {
+                  console.log('[Push Notifications] Service worker state changed', { newState: e.target.state });
+                  if (e.target.state === "activated") {
+                    clearTimeout(timeout);
+                    resolve();
+                  }
+                });
+              });
             }
-          });
-        });
-      }
-      debugLog('SUCCESS', 'Service worker activated');
-      return reg;
-    }
+            console.log('[Push Notifications] Service worker activated');
+            return reg;
+          } catch (error) {
+            console.log('[Push Notifications] Service worker wait failed:', error.message);
+            throw error;
+          }
+        }
 
     async function subscribe() {
-      debugLog('INFO', 'Starting subscription process');
-      
-      try {
-        const reg = await waitForActiveSW().catch((error) => {
-          debugLog('ERROR', 'Failed to wait for active SW', { error: error.message });
-          throw error;
-        });
-
-        debugLog('SUCCESS', 'Service worker ready for subscription');
-
-        // Re-request permission if not granted
-        debugLog('INFO', 'Current notification permission', { permission: Notification.permission });
-        const permission = await Notification.requestPermission();
-        debugLog('INFO', 'Notification permission requested', { permission });
-
-        if (permission !== "granted") {
-          debugLog('ERROR', 'Push permission denied', { permission });
-          // Don't return here - let the user know they need to enable notifications
-          // Show a user-friendly message instead of just logging
-          if (typeof window.alert === 'function') {
-            alert("To receive notifications, please enable notifications for this site in your browser settings and refresh the page.");
-          }
-          return;
-        }
-
-        debugLog('SUCCESS', 'Notification permission granted');
-
-        //  Check for existing subscription and avoid duplicates
-        const oldSub = await reg.pushManager.getSubscription();
-        debugLog('INFO', 'Checked for existing subscription', { hasExisting: !!oldSub });
-
-        if (oldSub) {
-          debugLog('INFO', 'Existing subscription found, checking backend stats');
+          console.log('[Push Notifications] Starting subscription process');
           
-          // Check if subscription is already registered in backend
           try {
-            const response = await fetch(`${API_URL}/subscriptions/stats`, {
-              headers: { Authorization: `Bearer ${token}` },
+            const reg = await waitForActiveSW().catch((error) => {
+              console.log('[Push Notifications] Failed to wait for SW:', error.message);
+              return null; // Return null instead of throwing
             });
-            if (response.ok) {
-              const stats = await response.json();
-              const totalSubs = stats.total || 0;
-              debugLog('INFO', 'Backend subscription stats', { totalSubs, stats });
-
-              // If we have subscriptions, skip creating new one
-              if (totalSubs > 0) {
-                debugLog('SUCCESS', 'Already have subscriptions in backend, skipping');
+    
+            if (!reg) {
+              console.log('[Push Notifications] No service worker registration');
+              return;
+            }
+    
+            console.log('[Push Notifications] Service worker ready for subscription');
+    
+            // Re-request permission if not granted
+            console.log('[Push Notifications] Current permission:', Notification.permission);
+            const permission = await Notification.requestPermission();
+            console.log('[Push Notifications] Permission requested:', permission);
+    
+            if (permission !== "granted") {
+              console.log('[Push Notifications] Permission denied');
+              return;
+            }
+    
+            console.log('[Push Notifications] Permission granted');
+    
+            // Check for existing subscription and avoid duplicates
+            const oldSub = await reg.pushManager.getSubscription();
+            console.log('[Push Notifications] Existing subscription:', !!oldSub);
+    
+            if (oldSub) {
+              // Check backend stats (optional, don't fail if this errors)
+              try {
+                const response = await fetch(`${API_URL}/subscriptions/stats`, {
+                  headers: { Authorization: `Bearer ${token}` },
+                });
+                if (response.ok) {
+                  const stats = await response.json();
+                  const totalSubs = stats.total || 0;
+                  console.log('[Push Notifications] Backend subscriptions:', totalSubs);
+    
+                  if (totalSubs > 0) {
+                    console.log('[Push Notifications] Already subscribed, skipping');
+                    return;
+                  }
+                }
+              } catch (err) {
+                console.log('[Push Notifications] Backend check failed:', err.message);
+              }
+    
+              console.log('[Push Notifications] Cleaning up old subscription');
+              await oldSub.unsubscribe();
+            }
+    
+            // Create subscription
+            if (!VAPID_KEY) {
+              console.log('[Push Notifications] No VAPID key available');
+              return;
+            }
+    
+            const convertedVapidKey = urlBase64ToUint8Array(VAPID_KEY);
+            const subscriptionOptions = {
+              userVisibleOnly: true,
+              applicationServerKey: convertedVapidKey,
+            };
+    
+            let sub;
+            try {
+              console.log('[Push Notifications] Attempting subscription');
+              sub = await reg.pushManager.subscribe(subscriptionOptions);
+              console.log('[Push Notifications] Subscription successful');
+            } catch (subscriptionError) {
+              console.log('[Push Notifications] VAPID subscription failed:', subscriptionError.name);
+    
+              // Try fallback without VAPID for Safari
+              if (isSafari || subscriptionError.name === 'NotSupportedError') {
+                console.log('[Push Notifications] Trying fallback subscription');
+                try {
+                  sub = await reg.pushManager.subscribe({
+                    userVisibleOnly: true,
+                  });
+                  console.log('[Push Notifications] Fallback subscription successful');
+                } catch (fallbackError) {
+                  console.log('[Push Notifications] Fallback also failed:', fallbackError.name);
+                  return;
+                }
+              } else {
                 return;
               }
+            }
+    
+            // Send to backend
+            const plainSub = sub.toJSON();
+            const response = await fetch(`${API_URL}/subscriptions`, {
+              method: "POST",
+              headers: {
+                "Content-Type": "application/json",
+                Authorization: `Bearer ${token}`,
+              },
+              body: JSON.stringify({ subscription: plainSub }),
+            });
+    
+            if (response.ok) {
+              console.log('[Push Notifications] Subscription saved to backend');
             } else {
-              debugLog('WARN', 'Failed to fetch subscription stats', { status: response.status });
+              console.log('[Push Notifications] Backend save failed:', response.status);
             }
+    
           } catch (err) {
-            debugLog('ERROR', 'Error checking subscription stats', { error: err.message });
-          }
-
-          debugLog('INFO', 'Unsubscribing from old subscription');
-          // Only unsubscribe if we're going to create a new one
-          await oldSub.unsubscribe();
-          debugLog('SUCCESS', 'Unsubscribed from old subscription');
-        }
-
-        
-        debugLog('INFO', 'Converting VAPID key', { hasVapidKey: !!VAPID_KEY });
-        const convertedVapidKey = urlBase64ToUint8Array(VAPID_KEY);
-
-        // Browser-specific subscription options for maximum compatibility
-        const subscriptionOptions = {
-          userVisibleOnly: true,
-          applicationServerKey: convertedVapidKey,
-        };
-
-        debugLog('INFO', 'Subscription options prepared', {
-          isSafari,
-          hasVapidKey: !!convertedVapidKey,
-          options: { ...subscriptionOptions, applicationServerKey: '[REDACTED]' }
-        });
-
-        // Browser-specific options
-        if (isEdge && !isChrome) {
-          debugLog('INFO', 'Applying Edge-specific options');
-        }
-
-        if (isFirefox) {
-          debugLog('INFO', 'Applying Firefox-specific options');
-        }
-
-        if (isSafari) {
-          debugLog('WARN', 'Safari detected - will try fallback without VAPID if needed');
-        }
-
-        let sub;
-        try {
-          debugLog('INFO', 'Attempting subscription with VAPID key');
-          sub = await reg.pushManager.subscribe(subscriptionOptions);
-          debugLog('SUCCESS', 'Subscription successful with VAPID key');
-        } catch (subscriptionError) {
-          debugLog('ERROR', 'VAPID subscription failed', {
-            error: subscriptionError.message,
-            name: subscriptionError.name,
-            isSafari,
-            isNotSupported: subscriptionError.name === 'NotSupportedError',
-            isInvalidState: subscriptionError.name === 'InvalidStateError'
-          });
-
-          // Fallback: try without VAPID for browsers that might not support it
-          if (isSafari || subscriptionError.name === 'NotSupportedError' || (isEdge && subscriptionError.name === 'InvalidStateError')) {
-            debugLog('INFO', 'Trying fallback subscription without VAPID');
-            try {
-              const fallbackOptions = {
-                userVisibleOnly: true,
-                // No applicationServerKey for fallback
-              };
-              debugLog('INFO', 'Fallback subscription options', { options: fallbackOptions });
-              
-              sub = await reg.pushManager.subscribe(fallbackOptions);
-              debugLog('SUCCESS', 'Fallback subscription successful');
-            } catch (fallbackError) {
-              debugLog('ERROR', 'Fallback subscription also failed', {
-                error: fallbackError.message,
-                name: fallbackError.name
-              });
-              throw fallbackError;
-            }
-          } else {
-            debugLog('ERROR', 'Not attempting fallback - error type not supported', { errorType: subscriptionError.name });
-            throw subscriptionError;
+            console.log('[Push Notifications] Subscription error:', err.message);
           }
         }
-
-        const plainSub = sub.toJSON();
-        debugLog('INFO', 'Subscription object created', {
-          endpoint: plainSub.endpoint?.substring(0, 50) + '...',
-          hasKeys: !!plainSub.keys
+    
+        // Safely call the subscription function
+        subscribe().catch((error) => {
+          console.log('[Push Notifications] Subscription process failed:', error.message);
         });
-
-        debugLog('INFO', 'Sending subscription to backend');
-        const response = await fetch(`${API_URL}/subscriptions`, {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            Authorization: `Bearer ${token}`,
-          },
-          body: JSON.stringify({ subscription: plainSub }),
-        });
-
-        if (!response.ok) {
-          const errorText = await response.text();
-          debugLog('ERROR', 'Backend subscription failed', {
-            status: response.status,
-            statusText: response.statusText,
-            error: errorText
-          });
-          throw new Error(`Backend subscription failed: ${response.status}`);
-        }
-
-        const result = await response.json();
-        debugLog('SUCCESS', 'Subscription saved to backend', { result });
-
-      } catch (err) {
-        debugLog('ERROR', 'Push subscribe error', {
-          error: err.message,
-          stack: err.stack,
-          isIOS: /iPad|iPhone|iPod/.test(navigator.userAgent),
-          isSafari
-        });
-        console.error("[Push Notifications] ❌ Push subscribe error:", err);
-      }
+      }, [token]);
     }
-
-    // Call the subscription function
-    subscribe();
-  }, [token]);
-}
