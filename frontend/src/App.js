@@ -25,29 +25,10 @@ export default function App() {
   
   // Always call both hooks to maintain consistent hook order
   usePushNotifications(token);
-  const { showTestNotification, isIOSDevice: deviceDetected } = useIOSNotifications(user);
+  const { isIOSDevice: deviceDetected } = useIOSNotifications(user);
 
   const [dark, setDark] = useState(false);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
-  const [updateAvailable, setUpdateAvailable] = useState(false);
-
-  useEffect(() => {
-    // Listen for service worker update messages
-    const handleServiceWorkerUpdate = (event) => {
-      if (event.data?.type === 'NEW_VERSION_AVAILABLE') {
-        setUpdateAvailable(true);
-      }
-    };
-
-    // Check if service worker is supported and available
-    if ('serviceWorker' in navigator && navigator.serviceWorker) {
-      navigator.serviceWorker.addEventListener('message', handleServiceWorkerUpdate);
-
-      return () => {
-        navigator.serviceWorker.removeEventListener('message', handleServiceWorkerUpdate);
-      };
-    }
-  }, []);
 
   // Request notification permission for non-iOS devices
   useEffect(() => {
@@ -62,34 +43,8 @@ export default function App() {
       {/* PWA Install Prompt */}
       <InstallPrompt />
 
-      {/* Update notification */}
-      {updateAvailable && (
-        <div className="fixed top-0 left-0 right-0 bg-blue-500 text-white p-4 flex justify-between items-center z-50">
-          <p>A new version is available!</p>
-          <button
-            onClick={() => window.location.reload()}
-            className="bg-white text-blue-500 px-4 py-2 rounded hover:bg-blue-50"
-          >
-            Update Now
-          </button>
-        </div>
-      )}
-
-      {/* iOS Notification Status */}
-      {deviceDetected && (
-        <div className="fixed top-0 left-0 right-0 bg-green-500 text-white p-2 text-center z-50 text-sm">
-          📱 iOS Mode: Real-time notifications enabled via WebSocket
-          <button
-            onClick={showTestNotification}
-            className="ml-2 bg-white text-green-500 px-2 py-1 rounded text-xs"
-          >
-            Test
-          </button>
-        </div>
-      )}
-
       {/* Fixed Nav */}
-      <nav className={`fixed top-0 left-0 w-full p-4 bg-white/80 backdrop-blur-md shadow-md z-10 ${deviceDetected ? 'mt-8' : ''}`}>
+      <nav className="fixed top-0 left-0 w-full p-4 bg-white/80 backdrop-blur-md shadow-md z-10">
         <div className="flex justify-between items-center">
           <div className="flex items-center gap-4">
             <img src="/logo192.png" alt="Taskflow Logo" className="w-8 h-8" />
@@ -141,7 +96,7 @@ export default function App() {
       </nav>
 
       {/* Centered page content */}
-      <main className={`flex-1 flex justify-center items-center pt-24 ${deviceDetected ? 'pt-32' : ''}`}>
+      <main className="flex-1 flex justify-center items-center pt-24">
         <Routes>
           <Route
             path="/"

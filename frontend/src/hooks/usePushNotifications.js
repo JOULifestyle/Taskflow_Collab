@@ -68,12 +68,6 @@ export function usePushNotifications(token) {
       return;
     }
 
-    // Skip push notifications on iOS devices - they use WebSocket notifications instead
-    if (isIOSDevice) {
-      console.log('[Push Notifications] iOS PWA detected - using WebSocket notifications');
-      return;
-    }
-
     // Safe environment checks
     const hasServiceWorker = typeof navigator !== 'undefined' && 'serviceWorker' in navigator;
     const hasPushManager = typeof window !== 'undefined' && 'PushManager' in window;
