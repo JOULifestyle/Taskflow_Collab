@@ -18,8 +18,6 @@ export const useIOSNotifications = (user) => {
       return;
     }
 
-    console.log('[iOS Notifications] Setting up real-time notifications for iOS');
-
     // Helper function to show toast notification
     const showToast = (message, type = 'default') => {
       const icons = {
@@ -49,7 +47,6 @@ export const useIOSNotifications = (user) => {
       if (task.userId === user._id) return;
       
       const message = `New task: ${task.text}`;
-      console.log('[iOS Notifications] Task created:', message);
       showToast(message, 'task_created');
     };
 
@@ -58,20 +55,17 @@ export const useIOSNotifications = (user) => {
       if (task.userId === user._id) return;
       
       const message = `Task updated: ${task.text}`;
-      console.log('[iOS Notifications] Task updated:', message);
       showToast(message, 'task_updated');
     };
 
     const handleTaskDeleted = (taskData) => {
       // We don't have the full task data for deleted tasks, so use a generic message
       const message = `Task was deleted`;
-      console.log('[iOS Notifications] Task deleted:', message);
       showToast(message, 'task_deleted');
     };
 
     const handleTaskReminder = (data) => {
       const message = data.message || 'Task reminder';
-      console.log('[iOS Notifications] Task reminder:', message);
       showToast(message, 'task_reminder');
     };
 
