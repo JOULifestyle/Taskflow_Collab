@@ -6,16 +6,26 @@ import CalendarView from "./pages/CalenderView";
 import AcceptInvitePage from "./pages/AcceptInvitePage";
 import Layout from "./Layout";
 import { usePushNotifications } from "./hooks/usePushNotifications";
+import { useIOSNotifications } from "./hooks/useIOSNotifications";
 import { useAuth } from "./context/AuthContext";
 import AuthPage from "./pages/AuthPage";
 import ProtectedRoute from "./components/ProtectedRoute";
 import UserAvatar from "./components/UserAvatar";
 import InstallPrompt from "./components/InstallPrompt";
+import { isIOS } from "./utils/platformUtils";
 
 export default function App() {
-  const { token } = useAuth();
+  const { token, user } = useAuth();
   
+  // Always call hooks in the same order - no conditional hook calls!
+  // Hybrid notification system:
+  // - Android/Desktop: Use push notifications (background notifications)
+  // - iOS: Use real-time WebSocket notifications (instant toast notifications)
+  const isIOSDevice = isIOS();
+  
+  // Always call both hooks to maintain consistent hook order
   usePushNotifications(token);
+  const { showTestNotification, isIOSDevice: deviceDetected } = useIOSNotifications(user);
 
   const [dark, setDark] = useState(false);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
@@ -39,14 +49,13 @@ export default function App() {
     }
   }, []);
 
-  // Request notification permission for fallback notifications
+  // Request notification permission for non-iOS devices
   useEffect(() => {
-    if (token && "Notification" in window && Notification.permission === "default") {
+    if (token && !isIOSDevice && "Notification" in window && Notification.permission === "default") {
       Notification.requestPermission().then((permission) => {
       });
     }
-  }, [token]);
-
+  }, [token, isIOSDevice]);
 
   return (
     <Layout dark={dark}>
@@ -66,8 +75,21 @@ export default function App() {
         </div>
       )}
 
+      {/* iOS Notification Status */}
+      {deviceDetected && (
+        <div className="fixed top-0 left-0 right-0 bg-green-500 text-white p-2 text-center z-50 text-sm">
+          📱 iOS Mode: Real-time notifications enabled via WebSocket
+          <button
+            onClick={showTestNotification}
+            className="ml-2 bg-white text-green-500 px-2 py-1 rounded text-xs"
+          >
+            Test
+          </button>
+        </div>
+      )}
+
       {/* Fixed Nav */}
-      <nav className="fixed top-0 left-0 w-full p-4 bg-white/80 backdrop-blur-md shadow-md z-10">
+      <nav className={`fixed top-0 left-0 w-full p-4 bg-white/80 backdrop-blur-md shadow-md z-10 ${deviceDetected ? 'mt-8' : ''}`}>
         <div className="flex justify-between items-center">
           <div className="flex items-center gap-4">
             <img src="/logo192.png" alt="Taskflow Logo" className="w-8 h-8" />
@@ -119,23 +141,23 @@ export default function App() {
       </nav>
 
       {/* Centered page content */}
-      <main className="flex-1 flex justify-center items-center pt-24">
+      <main className={`flex-1 flex justify-center items-center pt-24 ${deviceDetected ? 'pt-32' : ''}`}>
         <Routes>
-          <Route 
-            path="/" 
+          <Route
+            path="/"
             element={
               <ProtectedRoute>
                 <TodoPage />
               </ProtectedRoute>
-            } 
+            }
           />
-          <Route 
-            path="/dashboard" 
+          <Route
+            path="/dashboard"
             element={
               <ProtectedRoute>
                 <Dashboard />
               </ProtectedRoute>
-            } 
+            }
           />
           <Route
             path="/calenderview"
