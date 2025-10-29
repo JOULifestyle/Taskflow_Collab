@@ -288,20 +288,20 @@ if (!currentList) {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-indigo-50 dark:from-gray-900 dark:via-gray-800 dark:to-gray-900 flex items-center justify-center p-4">
-      <div className="w-[90%] sm:w-full max-w-md">
+    <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-indigo-50 dark:from-gray-900 dark:via-gray-800 dark:to-gray-900 flex items-center justify-center p-2 sm:p-4">
+      <div className="w-full max-w-sm sm:max-w-md">
         {/* Install PWA */}
         {installable && (
           <button
             onClick={handleInstallClick}
-            className="mb-6 w-full flex items-center justify-center gap-2 bg-green-600 dark:bg-green-700 text-white py-3 rounded-lg hover:bg-green-700 dark:hover:bg-green-800 transition font-medium shadow-lg"
+            className="mb-4 sm:mb-6 w-full flex items-center justify-center gap-2 bg-green-600 dark:bg-green-700 text-white py-2 sm:py-3 rounded-lg hover:bg-green-700 dark:hover:bg-green-800 transition font-medium shadow-lg text-sm sm:text-base"
           >
             📲 Install App
           </button>
         )}
 
-        <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-xl p-6 w-full border border-gray-100 dark:border-gray-700">
-          <h1 className="text-2xl font-bold mb-6 text-gray-900 dark:text-white text-center">
+        <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-xl p-3 sm:p-6 w-full border border-gray-100 dark:border-gray-700">
+          <h1 className="text-xl sm:text-2xl font-bold mb-4 sm:mb-6 text-gray-900 dark:text-white text-center">
             📋 My Lists
           </h1>
 
@@ -316,27 +316,27 @@ if (!currentList) {
               <p className="text-gray-500 dark:text-gray-400 mb-6">No lists yet. Create your first list below!</p>
             </div>
           ) : (
-            <ul className="space-y-3 mb-6">
+            <ul className="space-y-2 sm:space-y-3 mb-4 sm:mb-6">
               {lists.map((list) => (
                 <li
                   key={list._id}
-                  className="bg-gray-50 dark:bg-gray-700 rounded-lg p-4 hover:bg-gray-100 dark:hover:bg-gray-600 transition-colors"
+                  className="bg-gray-50 dark:bg-gray-700 rounded-lg p-2 sm:p-4 hover:bg-gray-100 dark:hover:bg-gray-600 transition-colors"
                 >
                   {/* Editable List Name */}
                   {editingId === list._id ? (
-                    <div className="flex gap-2">
+                    <div className="flex gap-1 sm:gap-2">
                       <input
                         value={editValue}
                         onChange={(e) => setEditValue(e.target.value)}
                         onBlur={() => handleEdit(list._id)}
                         onKeyDown={(e) => e.key === "Enter" && handleEdit(list._id)}
                         autoFocus
-                        className="flex-1 px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                        className="flex-1 px-2 sm:px-3 py-1 sm:py-2 text-sm border border-gray-300 dark:border-gray-600 rounded bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                         placeholder="List name"
                       />
                       <button
                         onClick={() => handleEdit(list._id)}
-                        className="px-3 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors text-sm font-medium"
+                        className="px-2 sm:px-3 py-1 sm:py-2 bg-green-600 text-white rounded hover:bg-green-700 transition-colors text-xs sm:text-sm font-medium whitespace-nowrap"
                       >
                         Save
                       </button>
@@ -344,20 +344,21 @@ if (!currentList) {
                   ) : (
                     <div className="flex items-center justify-between">
                       <span
-                        className="flex-1 cursor-pointer font-medium text-gray-900 dark:text-white hover:text-blue-600 dark:hover:text-blue-400 transition-colors"
+                        className="flex-1 cursor-pointer font-medium text-sm sm:text-base text-gray-900 dark:text-white hover:text-blue-600 dark:hover:text-blue-400 transition-colors truncate pr-2"
                         onClick={() => selectList(list)}
+                        title={list.name}
                       >
                         {list.name}
                       </span>
 
                       {/* Action buttons */}
-                      <div className="flex items-center gap-2 ml-3">
+                      <div className="flex items-center gap-1 sm:gap-2 flex-shrink-0">
                         <button
                           onClick={() => {
                             setEditingId(list._id);
                             setEditValue(list.name);
                           }}
-                          className="p-2 text-gray-500 hover:text-yellow-600 dark:hover:text-yellow-400 transition-colors"
+                          className="p-1 sm:p-2 text-gray-500 hover:text-yellow-600 dark:hover:text-yellow-400 transition-colors text-sm sm:text-base"
                           title="Edit list name"
                         >
                           ✏️
@@ -369,7 +370,7 @@ if (!currentList) {
                               deleteList(list._id);
                             }
                           }}
-                          className="p-2 text-gray-500 hover:text-red-600 dark:hover:text-red-400 transition-colors"
+                          className="p-1 sm:p-2 text-gray-500 hover:text-red-600 dark:hover:text-red-400 transition-colors text-sm sm:text-base"
                           title="Delete list"
                         >
                           🗑️
@@ -384,7 +385,7 @@ if (!currentList) {
 
           {/* Add List Form */}
           <form
-            className="flex gap-3"
+            className="flex flex-col sm:flex-row gap-2 sm:gap-3"
             onSubmit={(e) => {
               e.preventDefault();
               const formData = new FormData(e.target);
@@ -399,21 +400,21 @@ if (!currentList) {
               type="text"
               name="listName"
               placeholder="Enter new list name"
-              className="flex-1 px-4 py-3 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white placeholder-gray-500 dark:placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
+              className="flex-1 px-3 sm:px-4 py-2 sm:py-3 text-sm border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white placeholder-gray-500 dark:placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
               required
             />
             <button
               type="submit"
-              className="px-6 py-3 bg-blue-600 hover:bg-blue-700 dark:bg-blue-500 dark:hover:bg-blue-600 text-white rounded-lg transition-colors font-medium flex items-center gap-2"
+              className="px-4 sm:px-6 py-2 sm:py-3 bg-blue-600 hover:bg-blue-700 dark:bg-blue-500 dark:hover:bg-blue-600 text-white rounded-lg transition-colors font-medium flex items-center justify-center gap-1 sm:gap-2 text-sm sm:text-base"
             >
-              <span className="text-lg">➕</span>
-              Add
+              <span className="text-base sm:text-lg">➕</span>
+              <span className="hidden sm:inline">Add</span>
             </button>
           </form>
         </div>
 
         {/* Footer */}
-        <div className="text-center mt-6 text-sm text-gray-500 dark:text-gray-400">
+        <div className="text-center mt-4 sm:mt-6 text-xs sm:text-sm text-gray-500 dark:text-gray-400">
           <p>© 2025 TaskFlow. Organize your world.</p>
         </div>
       </div>
@@ -443,22 +444,22 @@ if (!currentList) {
           <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-500"></div>
         </div>
       ) : (
-        <div className="bg-white dark:bg-gray-900 text-gray-900 dark:text-gray-100 p-4 sm:p-6 rounded-xl shadow-xl w-full max-w-lg sm:max-w-md mx-auto flex flex-col justify-between min-h-[90vh]">
+        <div className="bg-white dark:bg-gray-900 text-gray-900 dark:text-gray-100 p-2 sm:p-4 lg:p-6 rounded-xl shadow-xl w-full max-w-sm sm:max-w-md lg:max-w-lg mx-auto flex flex-col justify-between min-h-[90vh]">
           <div>
             {/* Title & Back */}
-            <h1 className="text-2xl font-bold mb-2 text-center">📅 {currentList.name}</h1>
-            <p className="text-center text-sm text-gray-500 mb-4">
-              List ID: <span className="font-mono">{currentList._id}</span>
+            <h1 className="text-lg sm:text-xl lg:text-2xl font-bold mb-2 text-center break-words">📅 {currentList.name}</h1>
+            <p className="text-center text-xs sm:text-sm text-gray-500 mb-2 sm:mb-4">
+              <span className="hidden sm:inline">List ID: </span><span className="font-mono break-all">{currentList._id.slice(-8)}</span>
             </p>
             <button
               onClick={() => selectList(null)}
-              className="mb-4 text-sm text-blue-500 underline"
+              className="mb-2 sm:mb-4 text-xs sm:text-sm text-blue-500 underline"
             >
               ← Back to Lists
             </button>
 
             {/* New buttons */}
-            <div className="flex gap-2 mb-6">
+            <div className="flex flex-col sm:flex-row gap-2 mb-4 sm:mb-6">
               <button
                 onClick={() => {
                   if (isViewer) {
@@ -468,7 +469,7 @@ if (!currentList) {
                   setShowMembers(true);
                 }}
                 disabled={isViewer}
-                className={`px-3 py-1 rounded ${
+                className={`px-2 sm:px-3 py-1 sm:py-2 rounded text-xs sm:text-sm ${
                   isViewer
                     ? "bg-gray-400 text-gray-200 cursor-not-allowed"
                     : "bg-gray-200 dark:bg-gray-700 hover:bg-gray-300 dark:hover:bg-gray-600"
@@ -485,7 +486,7 @@ if (!currentList) {
                   setShowShare((prev) => !prev);
                 }}
                 disabled={isViewer}
-                className={`px-3 py-1 rounded ${
+                className={`px-2 sm:px-3 py-1 sm:py-2 rounded text-xs sm:text-sm ${
                   isViewer
                     ? "bg-gray-400 text-gray-200 cursor-not-allowed"
                     : "bg-gray-200 dark:bg-gray-700 hover:bg-gray-300 dark:hover:bg-gray-600"
@@ -497,7 +498,7 @@ if (!currentList) {
 
             {/* Inline ShareList */}
             {showShare && (
-              <div className="mb-6">
+              <div className="mb-4 sm:mb-6">
                 <ShareList listId={currentList._id} token={localStorage.getItem("token")} />
               </div>
             )}
@@ -512,11 +513,11 @@ if (!currentList) {
               />
             )}
           {/* Filters */}
-          <div className="flex flex-col sm:flex-row gap-2 sm:gap-0 sm:justify-between mb-3">
+          <div className="flex flex-col lg:flex-row gap-2 lg:gap-4 mb-2 sm:mb-3">
             <select
               value={filter}
               onChange={(e) => setFilter(e.target.value)}
-              className="text-sm border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 rounded p-2"
+              className="text-xs sm:text-sm border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 rounded p-1 sm:p-2"
             >
               <option value="all">All</option>
               <option value="completed">Completed</option>
@@ -526,7 +527,7 @@ if (!currentList) {
             <select
               value={categoryFilter}
               onChange={(e) => setCategoryFilter(e.target.value)}
-              className="text-sm border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 rounded p-2 sm:ml-2"
+              className="text-xs sm:text-sm border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 rounded p-1 sm:p-2"
             >
               <option value="all">All Categories</option>
               <option value="General">General</option>
@@ -535,20 +536,20 @@ if (!currentList) {
               <option value="Shopping">Shopping</option>
             </select>
             <select
-  value={severityFilter}
-  onChange={(e) => setSeverityFilter(e.target.value)}
-  className="text-sm border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 rounded p-2 sm:ml-2"
->
-  <option value="all">All Severities</option>
-  <option value="low">Low 🟢</option>
-  <option value="medium">Medium 🟡</option>
-  <option value="high">High 🔴</option>
-</select>
+              value={severityFilter}
+              onChange={(e) => setSeverityFilter(e.target.value)}
+              className="text-xs sm:text-sm border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 rounded p-1 sm:p-2"
+            >
+              <option value="all">All Severities</option>
+              <option value="low">Low 🟢</option>
+              <option value="medium">Medium 🟡</option>
+              <option value="high">High 🔴</option>
+            </select>
 
           </div>
 
           {/* Progress bar */}
-          <div className="w-full bg-gray-300 dark:bg-gray-600 h-3 rounded-full overflow-hidden mb-4">
+          <div className="w-full bg-gray-300 dark:bg-gray-600 h-2 sm:h-3 rounded-full overflow-hidden mb-2 sm:mb-4">
             <div
               className="h-full bg-blue-500 transition-all duration-500"
               style={{ width: `${(completedTasks / totalTasks) * 100 || 0}%` }}
@@ -556,7 +557,7 @@ if (!currentList) {
           </div>
 
           {/* Add Task Form */}
-          <div className="mb-4">
+          <div className="mb-2 sm:mb-4">
             <button
               onClick={() => {
                 if (isViewer) {
@@ -566,7 +567,7 @@ if (!currentList) {
                 setShowForm(!showForm);
               }}
               disabled={isViewer}
-              className={`w-full px-4 py-2 rounded-md transition-colors ${
+              className={`w-full px-3 sm:px-4 py-1 sm:py-2 rounded-md transition-colors text-sm sm:text-base ${
                 isViewer
                   ? "bg-gray-400 text-gray-200 cursor-not-allowed"
                   : "bg-blue-600 text-white hover:bg-blue-700 active:bg-blue-800"
@@ -662,12 +663,12 @@ if (!currentList) {
           {/* Drag and Drop Tasks */}
           <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
             {/* Non-recurring tasks */}
-  <h2 className="font-bold text-lg mt-4 mb-2">📝 Tasks</h2>
+  <h2 className="font-bold text-sm sm:text-base lg:text-lg mt-2 sm:mt-4 mb-2">📝 Tasks</h2>
 <SortableContext
   items={nonRecurringTasks.map((t) => t._id)}
   strategy={verticalListSortingStrategy}
 >
-  <ul className="space-y-3">
+  <ul className="space-y-2 sm:space-y-3">
     {nonRecurringTasks.map((task, index) => (
       <SortableTask
         key={task._id}
@@ -688,15 +689,15 @@ if (!currentList) {
 </SortableContext>
 
 {/* Divider */}
-<hr className="my-6 border-gray-400 dark:border-gray-600" />
+<hr className="my-4 sm:my-6 border-gray-400 dark:border-gray-600" />
 
 {/* Recurring tasks */}
-<h2 className="font-bold text-lg mb-2">🔁 Recurring Tasks</h2>
+<h2 className="font-bold text-sm sm:text-base lg:text-lg mb-2">🔁 Recurring Tasks</h2>
 <SortableContext
   items={recurringTasks.map((t) => t._id)}
   strategy={verticalListSortingStrategy}
 >
-  <ul className="space-y-3">
+  <ul className="space-y-2 sm:space-y-3">
     {recurringTasks.map((task, index) => (
       <SortableTask
         key={task._id}
@@ -718,7 +719,7 @@ if (!currentList) {
           </DndContext>
         </div>
 
-        <footer className="text-center mt-6 text-sm text-gray-600 dark:text-gray-400">
+        <footer className="text-center mt-4 sm:mt-6 text-xs sm:text-sm text-gray-600 dark:text-gray-400">
           © 2025 joulifestyle
         </footer>
       </div>
@@ -744,14 +745,14 @@ function SortableTask({ id, task, toggleTask, deleteTask, startEdit, onSave, get
       ref={setNodeRef}
       style={style}
       {...attributes}
-      className={`flex flex-col sm:flex-row justify-between items-start sm:items-center w-full bg-gray-100 dark:bg-gray-800 text-gray-900 dark:text-gray-100 p-3 rounded-md ${getPriorityColor(task.priority)}`}
+      className={`flex flex-col sm:flex-row justify-between items-start sm:items-center w-full bg-gray-100 dark:bg-gray-800 text-gray-900 dark:text-gray-100 p-2 sm:p-3 rounded-md ${getPriorityColor(task.priority)}`}
     >
       {task.editing ? (
         <EditTask task={task} onSave={onSave} onCancel={stopEdit} />
       ) : (
         <>
-          <div className="flex items-start gap-3 w-full">
-            <span {...listeners} className="cursor-grab text-gray-500 hover:text-gray-800" title="Drag">⠿</span>
+          <div className="flex items-start gap-2 sm:gap-3 w-full">
+            <span {...listeners} className="cursor-grab text-gray-500 hover:text-gray-800 text-sm sm:text-base" title="Drag">⠿</span>
             <input
               type="checkbox"
               checked={task.completed}
@@ -763,10 +764,11 @@ function SortableTask({ id, task, toggleTask, deleteTask, startEdit, onSave, get
                 toggleTask(task._id);
               }}
               disabled={isViewer}
+              className="mt-1"
             />
-            <div>
-              <p className={`${task.completed ? "line-through text-gray-400" : ""} font-medium`}>{task.text}</p>
-              {task.due && <p className={`text-sm ${getDueDateColor(task.due)}`}>Due: {formatDueDate(task.due)}</p>}
+            <div className="flex-1 min-w-0">
+              <p className={`${task.completed ? "line-through text-gray-400" : ""} font-medium text-sm sm:text-base break-words`}>{task.text}</p>
+              {task.due && <p className={`text-xs sm:text-sm ${getDueDateColor(task.due)}`}>Due: {formatDueDate(task.due)}</p>}
               <p className="text-xs italic capitalize">Priority: {task.priority}</p>
               <p className="text-xs font-semibold text-blue-500">Category: {task.category}</p>
               {task.repeat && (
@@ -782,7 +784,7 @@ function SortableTask({ id, task, toggleTask, deleteTask, startEdit, onSave, get
             </div>
           </div>
 
-          <div className="flex gap-2 mt-2 sm:mt-0">
+          <div className="flex gap-1 sm:gap-2 mt-2 sm:mt-0 self-end sm:self-center">
             <button
               onClick={() => {
                 if (isViewer) {
@@ -792,7 +794,7 @@ function SortableTask({ id, task, toggleTask, deleteTask, startEdit, onSave, get
                 startEdit(task._id);
               }}
               disabled={isViewer}
-              className={`text-sm ${isViewer ? "text-gray-400 cursor-not-allowed" : "text-blue-500 hover:underline"}`}
+              className={`text-xs sm:text-sm ${isViewer ? "text-gray-400 cursor-not-allowed" : "text-blue-500 hover:underline"}`}
             >
               Edit
             </button>
@@ -805,7 +807,7 @@ function SortableTask({ id, task, toggleTask, deleteTask, startEdit, onSave, get
                 deleteTask(task._id);
               }}
               disabled={isViewer}
-              className={`text-sm ${isViewer ? "text-gray-400 cursor-not-allowed" : "text-red-500 hover:underline"}`}
+              className={`text-xs sm:text-sm ${isViewer ? "text-gray-400 cursor-not-allowed" : "text-red-500 hover:underline"}`}
             >
               Delete
             </button>
@@ -826,11 +828,11 @@ function EditTask({ task, onSave, onCancel }) {
   const [repeat, setRepeat] = useState(task.repeat ?? "");
 
   const inputClasses =
-    "w-full p-2 border rounded-md bg-white text-gray-800 border-gray-300 " +
+    "w-full p-1 sm:p-2 border rounded-md bg-white text-gray-800 border-gray-300 text-sm " +
     "dark:bg-gray-800 dark:text-gray-100 dark:border-gray-600";
 
   const buttonBase =
-    "px-4 py-1 rounded-md text-white transition-colors";
+    "px-3 sm:px-4 py-1 rounded-md text-white transition-colors text-sm";
 
   return (
     <div className="w-full flex flex-col gap-2">
