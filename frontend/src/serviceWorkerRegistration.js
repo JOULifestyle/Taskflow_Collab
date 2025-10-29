@@ -7,8 +7,9 @@ const isLocalhost = Boolean(
   )
 );
 
-// Detect mobile devices
+// Detect mobile devices and iOS
 const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
+const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent);
 
 export function register(config) {
   if (process.env.NODE_ENV === 'production' && 'serviceWorker' in navigator) {
@@ -24,35 +25,74 @@ export function register(config) {
 }
 
 function registerValidSW(swUrl, config) {
+  console.log('[SW Registration] Registering service worker...');
+  
   navigator.serviceWorker
-    .register(swUrl)
+    .register(swUrl, {
+      scope: './',
+      // Add updateviacache for better iOS support
+      type: 'classic'
+    })
     .then((registration) => {
+      console.log('[SW Registration] SW registered successfully', {
+        scope: registration.scope,
+        state: registration.active?.state
+      });
+
       registration.onupdatefound = () => {
         const installingWorker = registration.installing;
         if (installingWorker) {
           installingWorker.onstatechange = () => {
             if (installingWorker.state === 'installed') {
               if (navigator.serviceWorker.controller) {
+                console.log('[SW Registration] New content available; please refresh.');
+                if (config && config.onUpdate) {
+                  config.onUpdate(registration);
+                }
               } else {
+                console.log('[SW Registration] Content is cached for offline use.');
+                if (config && config.onSuccess) {
+                  config.onSuccess(registration);
+                }
               }
             }
           };
         }
       };
+
+      // Enhanced iOS support: wait for active state
+      if (isIOS) {
+        if (registration.active?.state !== 'activated') {
+          console.log('[SW Registration] iOS detected, waiting for SW activation...');
+          registration.installing?.addEventListener('statechange', (e) => {
+            if (e.target.state === 'activated') {
+              console.log('[SW Registration] iOS SW activated successfully');
+            }
+          });
+        }
+      }
     })
     .catch((error) => {
       console.error('[SW Registration] SW registration failed:', error);
+      
+      // iOS-specific error handling
+      if (isIOS && error.message.includes('Failed to register')) {
+        console.log('[SW Registration] iOS registration failed - might need HTTPS and PWA installation');
+      }
     });
 }
 
 function checkValidServiceWorker(swUrl, config) {
-  fetch(swUrl)
+  fetch(swUrl, {
+    headers: { 'Service-Worker': 'script' },
+  })
     .then((response) => {
       const contentType = response.headers.get('content-type');
       if (
         response.status === 404 ||
         (contentType != null && contentType.indexOf('javascript') === -1)
       ) {
+        console.log('[SW Registration] Invalid SW, unregistering...');
         navigator.serviceWorker.ready.then((registration) => {
           registration.unregister().then(() => {
             window.location.reload();
@@ -63,6 +103,7 @@ function checkValidServiceWorker(swUrl, config) {
       }
     })
     .catch((error) => {
+      console.log('[SW Registration] No internet connection, SW registration failed');
     });
 }
 
