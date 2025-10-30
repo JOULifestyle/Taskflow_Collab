@@ -39,7 +39,6 @@ if ("serviceWorker" in navigator) {
   });
 }
 
-// Check PWA installation criteria
 
 // Listen for appinstalled event
 window.addEventListener('appinstalled', (e) => {

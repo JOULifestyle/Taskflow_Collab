@@ -17,10 +17,6 @@ import { isIOS } from "./utils/platformUtils";
 export default function App() {
   const { token, user } = useAuth();
   
-  // Always call hooks in the same order - no conditional hook calls!
-  // Hybrid notification system:
-  // - Android/Desktop: Use push notifications (background notifications)
-  // - iOS: Use real-time WebSocket notifications (instant toast notifications)
   const isIOSDevice = isIOS();
   
   // Always call both hooks to maintain consistent hook order

@@ -11,7 +11,7 @@
 The application allows users to create and manage multiple task lists, share them with team members with role-based permissions, set priorities and due dates, schedule recurring tasks, and receive timely reminders via push notifications. Real-time updates ensure all collaborators stay in sync, while the calendar view and analytics dashboard provide insights into productivity and task distribution.
 
 ## 🎬 App Demo
-![Taskflow Collab App Demo](frontend/public/TaskflowMockup-ezgif.com-video-to-gif-converter.gif)
+![Taskflow Collab App Demo](frontend/public/Taskflow.gif)
 
 > **Developer:** Israel Olasehinde
 
