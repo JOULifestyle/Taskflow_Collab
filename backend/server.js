@@ -45,15 +45,21 @@ app.use("/lists/:listId/tasks", listTasksRoutes);
 app.use("/invites", inviteRoutes);
 app.use("/tasks", tasksRoutes);
 
-// Web Push 
+// Web Push
 if (process.env.NODE_ENV !== "test") {
   if (process.env.VAPID_PUBLIC_KEY && process.env.VAPID_PRIVATE_KEY) {
+    // Fix for iOS Safari: Use proper domain instead of localhost/example.com
+    const vapidSubject = process.env.VAPID_SUBJECT || (process.env.NODE_ENV === 'production'
+      ? `https://${process.env.DOMAIN || 'yourdomain.com'}`
+      : 'mailto:admin@localhost');
+    
     webpush.setVapidDetails(
-      "mailto:youremail@example.com",
+      vapidSubject,
       process.env.VAPID_PUBLIC_KEY,
       process.env.VAPID_PRIVATE_KEY
     );
     
+    console.log("✅ WebPush configured with VAPID subject:", vapidSubject);
   } else {
     console.warn("⚠️ VAPID keys missing, push will not work");
   }
@@ -237,6 +243,7 @@ if (process.env.NODE_ENV !== "test") {
             let attempts = 0;
             const maxAttempts = 3;
             let lastError;
+            let finalError = null;
 
             while (attempts < maxAttempts) {
               try {
@@ -250,6 +257,25 @@ if (process.env.NODE_ENV !== "test") {
               } catch (err) {
                 attempts++;
                 lastError = err;
+                finalError = err;
+                
+                // Log specific errors for iOS debugging
+                if (err.statusCode === 401 || err.statusCode === 403) {
+                  console.error(`🚨 VAPID Authentication Error for ${browserType}:`, {
+                    statusCode: err.statusCode,
+                    message: err.message,
+                    endpoint: s.subscription.endpoint?.substring(0, 100) + '...'
+                  });
+                } else if (err.statusCode === 404 || err.statusCode === 410) {
+                  console.error(`🚨 Subscription expired for ${browserType}, cleaning up...`);
+                  // Clean up expired subscription
+                  await Subscription.findOneAndDelete({
+                    userId: s.userId,
+                    "subscription.endpoint": s.subscription.endpoint
+                  });
+                  break; // Don't retry expired subscriptions
+                }
+                
                 if (attempts < maxAttempts) {
                   const delay = Math.min(
                     1000 * Math.pow(2, attempts - 1),
@@ -265,7 +291,18 @@ if (process.env.NODE_ENV !== "test") {
               }
             }
 
-            if (attempts >= maxAttempts) throw lastError;
+            if (attempts >= maxAttempts) {
+              console.error(`❌ Failed to send notification after ${maxAttempts} attempts:`, finalError?.message);
+              
+              // For iOS Safari specific issues, try cleanup
+              if (finalError?.statusCode === 401 && s.browserType === 'Safari') {
+                console.log('🧹 Cleaning up potentially invalid Safari subscription...');
+                await Subscription.findOneAndDelete({
+                  userId: s.userId,
+                  "subscription.endpoint": s.subscription.endpoint
+                });
+              }
+            }
           } catch (err) {
             console.error(
               `❌ Push error for ${s.userId}:`,
