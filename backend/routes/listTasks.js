@@ -460,4 +460,42 @@ router.delete("/:taskId", auth, authorizeList("editor"), async (req, res) => {
   }
 });
 
+// Reorder tasks
+router.put("/reorder", auth, authorizeList("editor"), async (req, res) => {
+  try {
+    const listId = new mongoose.Types.ObjectId(req.params.listId);
+    const { orderedIds } = req.body;
+
+    if (!orderedIds || !Array.isArray(orderedIds)) {
+      return res.status(400).json({ error: "orderedIds must be an array" });
+    }
+
+    // Update the order field for each task
+    const bulkOps = orderedIds.map((taskId, index) => ({
+      updateOne: {
+        filter: { _id: taskId, listId },
+        update: { $set: { order: index + 1 } }
+      }
+    }));
+
+    if (bulkOps.length > 0) {
+      await Task.bulkWrite(bulkOps);
+    }
+
+    // Get the updated tasks
+    const updatedTasks = await Task.find({ listId }).sort({ order: 1 });
+
+    // Emit event via WebSocket to the list room
+    const io = req.app.get("io");
+    if (io) {
+      io.to(`list:${listId}`).emit("tasks:reordered", updatedTasks);
+    }
+
+    res.json(updatedTasks);
+  } catch (err) {
+    console.error("Reorder tasks error:", err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
 module.exports = router;
