@@ -616,7 +616,7 @@ if (!currentList) {
                 <select
                   value={repeat}
                   onChange={(e) => setRepeat(e.target.value)}
-                  className="p-2 border rounded-md"
+                  className="p-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100"
                 >
                   <option value="">No repeat</option>
                   <option value="daily">Daily</option>
