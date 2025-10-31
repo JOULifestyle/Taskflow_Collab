@@ -463,10 +463,19 @@ router.delete("/:taskId", auth, authorizeList("editor"), async (req, res) => {
 // Reorder tasks
 router.put("/reorder", auth, authorizeList("editor"), async (req, res) => {
   try {
+    console.log("Reorder request received:", {
+      listId: req.params.listId,
+      body: req.body,
+      userId: req.user.id
+    });
+    
     const listId = new mongoose.Types.ObjectId(req.params.listId);
     const { orderedIds } = req.body;
 
+    console.log("Processed data:", { listId: listId.toString(), orderedIds });
+
     if (!orderedIds || !Array.isArray(orderedIds)) {
+      console.log("Invalid orderedIds:", orderedIds);
       return res.status(400).json({ error: "orderedIds must be an array" });
     }
 
@@ -478,23 +487,31 @@ router.put("/reorder", auth, authorizeList("editor"), async (req, res) => {
       }
     }));
 
+    console.log("Bulk operations prepared:", bulkOps.length);
+
     if (bulkOps.length > 0) {
-      await Task.bulkWrite(bulkOps);
+      const result = await Task.bulkWrite(bulkOps);
+      console.log("Bulk write result:", result);
+    } else {
+      console.log("No bulk operations to perform");
     }
 
     // Get the updated tasks
     const updatedTasks = await Task.find({ listId }).sort({ order: 1 });
+    console.log("Updated tasks count:", updatedTasks.length);
 
     // Emit event via WebSocket to the list room
     const io = req.app.get("io");
     if (io) {
       io.to(`list:${listId}`).emit("tasks:reordered", updatedTasks);
+      console.log("WebSocket event emitted");
     }
 
     res.json(updatedTasks);
   } catch (err) {
     console.error("Reorder tasks error:", err);
-    res.status(500).json({ error: err.message });
+    console.error("Error stack:", err.stack);
+    res.status(500).json({ error: err.message, stack: err.stack });
   }
 });
 
