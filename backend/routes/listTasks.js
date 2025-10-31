@@ -515,4 +515,188 @@ router.put("/reorder", auth, authorizeList("editor"), async (req, res) => {
   }
 });
 
+// Update task
+router.put("/:taskId", auth, authorizeList("editor"), async (req, res) => {
+  try {
+    const listId = new mongoose.Types.ObjectId(req.params.listId);
+
+    // Strip listId if frontend sends it
+    const { listId: ignoreListId, ...updateData } = req.body;
+
+    // Normalize repeat if provided
+    if (
+      Object.prototype.hasOwnProperty.call(updateData, "repeat") &&
+      (!updateData.repeat || updateData.repeat.trim() === "")
+    ) {
+      updateData.repeat = null;
+    }
+
+    const task = await Task.findOneAndUpdate(
+      { _id: req.params.taskId, listId }, // enforce listId filter
+      updateData,
+      { new: true }
+    );
+
+    if (!task) return res.status(404).json({ error: "Task not found" });
+
+    // Get the list to find all members
+    const list = await List.findById(listId);
+    if (!list) return res.status(404).json({ error: "List not found" });
+
+    // Get all member user IDs (including the owner)
+    const memberIds = [list.owner, ...list.members.map(m => m.userId)];
+
+    //  Emit event via WebSocket to the list room (all connected members)
+    const io = req.app.get("io");
+    if (io) {
+      io.to(`list:${listId}`).emit("task:updated", task);
+    }
+
+    //  Send push notifications to ALL list members
+    const subs = await Subscription.find({ userId: { $in: memberIds } });
+    const basePayload = {
+      title: "Task Updated",
+      body: `✏️ ${task.text} was updated`,
+      icon: "/logo192.png",
+      badge: "/logo192.png",
+      data: {
+        url: `/`,
+        taskId: task._id.toString(),
+        listId: listId.toString(),
+        type: "task_updated"
+      }
+    };
+
+    for (const s of subs) {
+      try {
+        const endpoint = s.subscription.endpoint || "";
+        const isFCM = endpoint.includes('fcm.googleapis.com');
+        const isWNS = endpoint.includes('notify.windows.com');
+        const isSafari = endpoint.includes('webkit');
+        const browserType = isFCM ? 'Chrome/Edge/Firefox' : isWNS ? 'Edge (WNS)' : isSafari ? 'Safari' : 'Unknown';
+
+        // Skip Edge on iOS as it doesn't support push notifications
+        if (isWNS && s.browserType === 'Edge (WNS)' && endpoint.includes('notify.windows.com')) {
+          continue;
+        }
+
+        // Skip Edge on iOS as it doesn't support push notifications
+        if (isWNS && s.browserType === 'Edge (WNS)' && endpoint.includes('notify.windows.com')) {
+          
+          continue;
+        }
+
+        // Skip Edge on iOS as it doesn't support push notifications
+        if (isWNS && s.browserType === 'Edge (WNS)' && endpoint.includes('notify.windows.com')) {
+         
+          continue;
+        }
+
+        // Create browser-specific payload
+        let payload;
+        if (isFCM || isWNS) {
+          payload = JSON.stringify({
+            ...basePayload,
+            actions: [
+              { action: "view", title: "View Task" }
+            ],
+            requireInteraction: false,
+            silent: false
+          });
+        } else if (isSafari) {
+          payload = JSON.stringify({
+            ...basePayload,
+            actions: undefined,
+            requireInteraction: undefined,
+            badge: undefined
+          });
+        } else {
+          payload = JSON.stringify(basePayload);
+        }
+
+        const startTime = Date.now();
+        
+        // Add timeout for iOS Safari
+        const timeoutPromise = new Promise((_, reject) => {
+          setTimeout(() => reject(new Error('Push notification timeout')), 10000);
+        });
+        
+        try {
+          await Promise.race([
+            webpush.sendNotification(s.subscription, payload),
+            timeoutPromise
+          ]);
+        } catch (timeoutError) {
+          console.error(`⏰ Push timeout for ${s.userId} (${browserType}):`, timeoutError.message);
+        }
+        
+        const duration = Date.now() - startTime;
+
+      } catch (err) {
+        const endpoint = s.subscription.endpoint || "";
+        const isFCM = endpoint.includes('fcm.googleapis.com');
+        const isWNS = endpoint.includes('notify.windows.com');
+        const isSafari = endpoint.includes('webkit');
+        const browserType = isFCM ? 'Chrome/Edge/Firefox' : isWNS ? 'Edge (WNS)' : isSafari ? 'Safari' : 'Unknown';
+
+        console.error(`❌ Push error for ${s.userId} (${browserType}):`, {
+          statusCode: err.statusCode,
+          message: err.message,
+          body: err.body || '',
+          endpoint: endpoint.substring(0, 100) + '...'
+        });
+
+        // Enhanced error handling for iOS Safari
+        if (err.statusCode === 400) {
+          console.error(`🚨 Bad Request (400) - likely malformed subscription for ${browserType}`);
+        } else if (err.statusCode === 401) {
+          console.error(`🚨 Unauthorized (401) - VAPID keys issue for ${browserType}`);
+          
+          // For Safari, this might indicate the VAPID subject issue we fixed
+          if (browserType === 'Safari') {
+            console.error(`🍎 iOS Safari VAPID error detected - subscription might need refresh`);
+          }
+        } else if (err.statusCode === 403) {
+          console.error(`🚨 Forbidden (403) - endpoint blocked or invalid for ${browserType}`);
+        } else if (err.statusCode === 404) {
+          console.error(`🚨 Not Found (404) - subscription expired for ${browserType}, cleaning up...`);
+          // Clean up expired subscription
+          await Subscription.findOneAndDelete({
+            userId: s.userId,
+            "subscription.endpoint": endpoint
+          });
+        } else if (err.statusCode === 410) {
+          console.error(`🚨 Gone (410) - subscription permanently invalid for ${browserType}, cleaning up...`);
+          // Clean up permanently invalid subscription
+          await Subscription.findOneAndDelete({
+            userId: s.userId,
+            "subscription.endpoint": endpoint
+          });
+        } else if (err.message && err.message.includes('timeout')) {
+          console.error(`⏰ Push timeout for ${browserType} - might be iOS Safari specific`);
+        }
+        
+        // Special cleanup for Safari subscriptions that fail with auth errors
+        if (browserType === 'Safari' && (err.statusCode === 401 || err.statusCode === 403)) {
+          console.log(`🧹 Cleaning up potentially invalid Safari subscription due to auth error...`);
+          try {
+            await Subscription.findOneAndDelete({
+              userId: s.userId,
+              "subscription.endpoint": endpoint
+            });
+            console.log(`✅ Cleaned up Safari subscription for user ${s.userId}`);
+          } catch (cleanupError) {
+            console.error(`❌ Failed to cleanup Safari subscription:`, cleanupError);
+          }
+        }
+      }
+    }
+
+    res.json(task);
+  } catch (err) {
+    console.error("Update task error:", err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
 module.exports = router;
