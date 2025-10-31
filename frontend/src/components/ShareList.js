@@ -41,12 +41,12 @@ export default function ShareList({ listId, token, onShared }) {
   };
 
   return (
-    <form onSubmit={handleShare} className="p-4 space-y-3 bg-gray-100 rounded-xl">
+    <form onSubmit={handleShare} className="p-4 space-y-3 bg-gray-100 dark:bg-gray-700 rounded-xl">
       <div className="flex space-x-2">
         <select
           value={inputType}
           onChange={(e) => setInputType(e.target.value)}
-          className="border p-2 rounded"
+          className="border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 p-2 rounded"
         >
           <option value="email">Email</option>
           <option value="userId">User ID</option>
@@ -56,21 +56,21 @@ export default function ShareList({ listId, token, onShared }) {
           placeholder={inputType === "email" ? "Enter email address" : "Enter userId"}
           value={input}
           onChange={(e) => setInput(e.target.value)}
-          className="border p-2 flex-1 rounded"
+          className="border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 placeholder-gray-500 dark:placeholder-gray-400 p-2 flex-1 rounded"
         />
       </div>
       <select
         value={role}
         onChange={(e) => setRole(e.target.value)}
-        className="border p-2 w-full rounded"
+        className="border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 p-2 w-full rounded"
       >
         <option value="viewer">Viewer</option>
         <option value="editor">Editor</option>
       </select>
-      <button type="submit" className="bg-blue-500 text-white px-4 py-2 rounded">
+      <button type="submit" className="bg-blue-500 dark:bg-blue-600 hover:bg-blue-600 dark:hover:bg-blue-700 text-white px-4 py-2 rounded transition-colors">
         {inputType === "email" ? "Invite" : "Share"}
       </button>
-      {message && <p>{message}</p>}
+      {message && <p className="text-gray-700 dark:text-gray-300">{message}</p>}
     </form>
   );
 }

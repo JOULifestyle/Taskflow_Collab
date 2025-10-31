@@ -104,40 +104,40 @@ export default function MembersModal({ list, token, onClose, currentUser }) {
   );
 
   return (
-    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
-      <div className="bg-white rounded-xl p-6 w-96 shadow-lg">
-        <h2 className="text-lg font-bold mb-4">Manage Members</h2>
+    <div className="fixed inset-0 bg-black/50 dark:bg-black/70 flex items-center justify-center z-50">
+      <div className="bg-white dark:bg-gray-800 rounded-xl p-6 w-96 shadow-lg">
+        <h2 className="text-lg font-bold mb-4 text-gray-900 dark:text-gray-100">Manage Members</h2>
 
         {loading ? (
-          <p>Loading...</p>
+          <p className="text-gray-600 dark:text-gray-400">Loading...</p>
         ) : (
           <ul className="space-y-3 mb-4">
             {members.map((m) => (
               <li
                 key={m.userId}
-                className="flex justify-between items-center border-b py-2"
+                className="flex justify-between items-center border-b border-gray-200 dark:border-gray-600 py-2"
               >
-                <span> {m.userId === currentUser._id ? "You" : m.userId}</span>
+                <span className="text-gray-900 dark:text-gray-100"> {m.userId === currentUser._id ? "You" : m.userId}</span>
                 <div className="flex items-center gap-2">
                   {isOwner && m.role !== "owner" ? (
                     <>
                       <select
                         value={m.role}
                         onChange={(e) => changeRole(m.userId, e.target.value)}
-                        className="border rounded px-2 py-1 text-sm"
+                        className="border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 rounded px-2 py-1 text-sm"
                       >
                         <option value="viewer">Viewer</option>
                         <option value="editor">Editor</option>
                       </select>
                       <button
                         onClick={() => remove(m.userId)}
-                        className="text-red-500 hover:underline text-sm"
+                        className="text-red-500 dark:text-red-400 hover:underline text-sm"
                       >
                         Remove
                       </button>
                     </>
                   ) : (
-                    <span className="text-sm text-gray-600">{m.role}</span>
+                    <span className="text-sm text-gray-600 dark:text-gray-400">{m.role}</span>
                   )}
                 </div>
               </li>
@@ -152,12 +152,12 @@ export default function MembersModal({ list, token, onClose, currentUser }) {
                 value={inviteUser}
                 onChange={(e) => setInviteUser(e.target.value)}
                 placeholder="User ID"
-                className="flex-1 border rounded px-2 py-1"
+                className="flex-1 border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 placeholder-gray-500 dark:placeholder-gray-400 rounded px-2 py-1"
               />
               <select
                 value={inviteRole}
                 onChange={(e) => setInviteRole(e.target.value)}
-                className="border rounded px-2 py-1"
+                className="border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 rounded px-2 py-1"
               >
                 <option value="viewer">Viewer</option>
                 <option value="editor">Editor</option>
@@ -165,7 +165,7 @@ export default function MembersModal({ list, token, onClose, currentUser }) {
             </div>
             <button
               onClick={invite}
-              className="bg-blue-600 text-white px-4 py-2 rounded w-full hover:bg-blue-700"
+              className="bg-blue-600 dark:bg-blue-700 text-white px-4 py-2 rounded w-full hover:bg-blue-700 dark:hover:bg-blue-800 transition-colors"
             >
               Invite
             </button>
@@ -174,7 +174,7 @@ export default function MembersModal({ list, token, onClose, currentUser }) {
 
         <button
           onClick={onClose}
-          className="mt-3 text-sm text-gray-500 hover:underline w-full"
+          className="mt-3 text-sm text-gray-500 dark:text-gray-400 hover:underline w-full"
         >
           Close
         </button>
